@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="fill_parent"
+    android:layout_height="70dp"
+    android:padding="10dp">
+
+    <TextView
+        android:id="@+id/contactPreview"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_alignWithParentIfMissing="true"
+        android:layout_above="@id/snippetPreview"
+        android:layout_alignParentTop="false"
+        android:layout_alignParentRight="false"
+        android:gravity="top|left"
+        android:text="Contact"
+        android:textSize="18sp"
+        android:textStyle="bold" />
+
+    <TextView
+        android:id="@+id/snippetPreview"
+        android:layout_width="fill_parent"
+        android:layout_height="26dip"
+        android:layout_alignParentRight="true"
+        android:layout_alignParentBottom="true"
+        android:gravity="bottom|left"
+        android:maxLines="1"
+        android:paddingTop="5dp"
+        android:text="Snippet"
+        android:textSize="16sp" />
+
+    <TextView
+        android:id="@+id/timePreview"
+        android:layout_width="fill_parent"
+        android:layout_height="wrap_content"
+        android:layout_alignWithParentIfMissing="true"
+        android:layout_above="@id/snippetPreview"
+        android:layout_alignParentTop="true"
+        android:layout_alignParentRight="true"
+        android:gravity="right|top"
+        android:text="Time"
+        android:textSize="14sp"
+        tools:layout_toRightOf="@id/contactPreview" />
+
+</RelativeLayout>
