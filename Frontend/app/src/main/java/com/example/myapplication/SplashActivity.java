@@ -77,13 +77,16 @@ public class SplashActivity extends Activity {
 
         // TODO: Can probably query for distinct address to save time
         Cursor cur = cr.query(Uri.parse("content://sms"),
-                new String[]{"thread_id", "address", "person", "body", "date"}, null, null, null);
+                new String[]{"DISTINCT thread_id", "address", "person", "body", "date"}, "thread_id IS NOT NULL) GROUP BY (thread_id", null, Telephony.Sms.DEFAULT_SORT_ORDER);
         ArrayList<ContactDataModel> contacts = new ArrayList<>();
         ArrayList<String> seenThreads = new ArrayList<>();
+
         try {
+            int count = 0;
             while (cur.moveToNext()) {
                 //String snippet = cur.getString(cur.getColumnIndexOrThrow(Telephony.Sms.Conversations.SNIPPET));
                 String threadId = cur.getString(cur.getColumnIndexOrThrow(Telephony.Sms.THREAD_ID));
+                Log.d("tag", String.valueOf(count++));
                 if (seenThreads.contains(threadId)) {
                     continue;
                 }
@@ -98,8 +101,6 @@ public class SplashActivity extends Activity {
                 String displayName = getContactbyPhoneNumber(getApplicationContext(), address);
                 if (!displayName.isEmpty()) {
                     contact.setDisplayName(displayName);
-                    Log.d("tag", displayName);
-                    Log.d("tag", body);
                 }
                 contact.setPriority(ContactDataModel.Level.PRIORITY);
                 contacts.add(contact);
