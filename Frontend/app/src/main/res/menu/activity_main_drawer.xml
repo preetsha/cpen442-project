@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<menu xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    tools:showIn="navigation_view">
+
+    <group android:checkableBehavior="single">
+        <item
+            android:id="@+id/nav_priority"
+            android:icon="@drawable/priority"
+            android:title="@string/priority_inbox" />
+        <item
+            android:id="@+id/nav_regular"
+            android:icon="@drawable/inbox"
+            android:title="@string/regular_inbox" />
+        <item
+            android:id="@+id/nav_spam"
+            android:icon="@drawable/spam"
+            android:title="@string/spam_inbox" />
+    </group>
+</menu>
