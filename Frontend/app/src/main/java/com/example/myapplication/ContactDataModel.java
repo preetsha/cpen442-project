@@ -6,7 +6,7 @@ import java.util.Locale;
 import java.util.Objects;
 
 public class ContactDataModel {
-    enum Level {
+    public enum Level {
         REGULAR,
         PRIORITY,
         SPAM
@@ -16,7 +16,7 @@ public class ContactDataModel {
     private final String threadId;
     private String displayName = "";
     private String snippet = "";
-    private long snippetTime;
+    private final long snippetTime;
     private Level priority = Level.REGULAR;
     private int trustScore;
 

@@ -11,7 +11,6 @@ import android.net.Uri;
 import android.os.Bundle;
 import android.provider.ContactsContract;
 import android.provider.Telephony;
-import android.util.Log;
 
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
@@ -82,17 +81,16 @@ public class SplashActivity extends Activity {
         ArrayList<String> seenThreads = new ArrayList<>();
 
         try {
-            int count = 0;
             while (cur.moveToNext()) {
                 //String snippet = cur.getString(cur.getColumnIndexOrThrow(Telephony.Sms.Conversations.SNIPPET));
                 String threadId = cur.getString(cur.getColumnIndexOrThrow(Telephony.Sms.THREAD_ID));
-                Log.d("tag", String.valueOf(count++));
                 if (seenThreads.contains(threadId)) {
                     continue;
                 }
                 String address = cur.getString(cur.getColumnIndexOrThrow(Telephony.Sms.ADDRESS));
                 long dateLong = cur.getLong(cur.getColumnIndexOrThrow(Telephony.Sms.DATE));
                 String body = cur.getString(cur.getColumnIndexOrThrow(Telephony.Sms.BODY));
+                //int person = cur.getInt(cur.getColumnIndexOrThrow(Telephony.Sms.PERSON));
                 if (body.length() > 45) {
                     body = body.substring(0, 42) + "...";
                 }
@@ -101,11 +99,14 @@ public class SplashActivity extends Activity {
                 String displayName = getContactbyPhoneNumber(getApplicationContext(), address);
                 if (!displayName.isEmpty()) {
                     contact.setDisplayName(displayName);
+                    contact.setPriority(ContactDataModel.Level.PRIORITY);
+                } else {
+                    contact.setPriority(ContactDataModel.Level.REGULAR);// TODO: CALCULATE PRIORITY HERE using server or if known contact
                 }
-                contact.setPriority(ContactDataModel.Level.PRIORITY);
+
                 contacts.add(contact);
                 seenThreads.add(threadId);
-                // TODO: CALCULATE PRIORITY HERE using server or if known contact
+
             }
         } finally {
             if (cur != null) {

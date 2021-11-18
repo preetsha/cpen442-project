@@ -9,11 +9,11 @@ import android.view.animation.AnimationUtils;
 import android.widget.ArrayAdapter;
 import android.widget.TextView;
 
-import java.util.ArrayList;
+import java.util.List;
 
 public class ContactAdapter extends ArrayAdapter<ContactDataModel> implements View.OnClickListener {
 
-    private ArrayList<ContactDataModel> data;
+    private final List<ContactDataModel> data;
     Context mContext;
 
     // View lookup cache
@@ -23,7 +23,7 @@ public class ContactAdapter extends ArrayAdapter<ContactDataModel> implements Vi
         TextView timePreview;
     }
 
-    public ContactAdapter(ArrayList<ContactDataModel> data, Context context) {
+    public ContactAdapter(List<ContactDataModel> data, Context context) {
         super(context, R.layout.content_summary, data);
         this.data = data;
         this.mContext = context;
@@ -56,9 +56,9 @@ public class ContactAdapter extends ArrayAdapter<ContactDataModel> implements Vi
             viewHolder = new ViewHolder();
             LayoutInflater inflater = LayoutInflater.from(getContext());
             convertView = inflater.inflate(R.layout.content_summary, parent, false);
-            viewHolder.contactPreview = (TextView) convertView.findViewById(R.id.contactPreview);
-            viewHolder.snippetPreview = (TextView) convertView.findViewById(R.id.snippetPreview);
-            viewHolder.timePreview = (TextView) convertView.findViewById(R.id.timePreview);
+            viewHolder.contactPreview = convertView.findViewById(R.id.contactPreview);
+            viewHolder.snippetPreview = convertView.findViewById(R.id.snippetPreview);
+            viewHolder.timePreview = convertView.findViewById(R.id.timePreview);
 
             result = convertView;
 

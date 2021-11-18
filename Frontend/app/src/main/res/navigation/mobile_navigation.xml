@@ -9,17 +9,32 @@
         android:id="@+id/nav_priority"
         android:name="com.example.myapplication.ui.priority.InboxFragment"
         android:label="Priority Inbox"
-        tools:layout="@layout/fragment_inbox" />
+        tools:layout="@layout/fragment_inbox">
+        <argument
+            android:name="type"
+            app:argType="string"
+            android:defaultValue="priority" />
+    </fragment>
 
     <fragment
         android:id="@+id/nav_regular"
-        android:name="com.example.myapplication.ui.gallery.GalleryFragment"
+        android:name="com.example.myapplication.ui.priority.InboxFragment"
         android:label="Regular Inbox"
-        tools:layout="@layout/fragment_gallery" />
+        tools:layout="@layout/fragment_inbox">
+        <argument
+            android:name="type"
+            app:argType="string"
+            android:defaultValue="regular" />
+    </fragment>
 
     <fragment
         android:id="@+id/nav_spam"
-        android:name="com.example.myapplication.ui.slideshow.SlideshowFragment"
+        android:name="com.example.myapplication.ui.priority.InboxFragment"
         android:label="Spam Inbox"
-        tools:layout="@layout/fragment_slideshow" />
+        tools:layout="@layout/fragment_inbox">
+        <argument
+            android:name="type"
+            app:argType="string"
+            android:defaultValue="spam" />
+    </fragment>
 </navigation>

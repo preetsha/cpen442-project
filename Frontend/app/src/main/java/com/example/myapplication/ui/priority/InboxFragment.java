@@ -2,7 +2,6 @@ package com.example.myapplication.ui.priority;
 
 import android.os.Bundle;
 import android.view.LayoutInflater;
-import android.view.Menu;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.AdapterView;
@@ -16,7 +15,7 @@ import com.example.myapplication.ContactDataModel;
 import com.example.myapplication.SMSContacts;
 import com.example.myapplication.databinding.FragmentInboxBinding;
 
-import java.util.ArrayList;
+import java.util.List;
 
 public class InboxFragment extends Fragment {
 
@@ -30,8 +29,15 @@ public class InboxFragment extends Fragment {
         binding = FragmentInboxBinding.inflate(inflater, container, false);
         View root = binding.getRoot();
 
-        listView = (ListView) binding.contactList;
-        ArrayList<ContactDataModel> contactList = SMSContacts.getContactList();
+        String priorityLevelStr = this.getArguments().getString("type");
+        ContactDataModel.Level priorityLevel = ContactDataModel.Level.REGULAR;
+        if (priorityLevelStr.equals("priority")) {
+            priorityLevel = ContactDataModel.Level.PRIORITY;
+        } else if (priorityLevelStr.equals("spam")) {
+            priorityLevel = ContactDataModel.Level.SPAM;
+        }
+        listView = binding.contactList;
+        List<ContactDataModel> contactList = SMSContacts.getContactsByInbox(priorityLevel);
 
         adapter = new ContactAdapter(contactList, getContext());
 
