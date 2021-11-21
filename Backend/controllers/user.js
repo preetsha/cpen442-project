@@ -1,5 +1,5 @@
 const User = require('../models/user');
-
+/*
 // Twilio Library
 const Twilio = require('twilio');
 
@@ -41,7 +41,7 @@ const smsVerify = new SMSVerify(twilioClient,
     process.env.APP_HASH,
     process.env.VERIFICATION_SERVICE_SID,
     process.env.COUNTRY_CODE);
-
+*/
 module.exports = {
     // This is just an example, we do not want to keep this function in the final implementation
     getUser: async (req, res) => {
@@ -63,6 +63,7 @@ module.exports = {
     createUser: async (req, res) => {
         res.status(200).send({ "message": "This does nothing right now :/" });
     },
+    /*
     request: async (req, res) => {
         const clientSecret = req.body.client_secret;
         const phone = req.body.phone;
@@ -144,4 +145,5 @@ module.exports = {
             });
         }
     }
+    */
 }
