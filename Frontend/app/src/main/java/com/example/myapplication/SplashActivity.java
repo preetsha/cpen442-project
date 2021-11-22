@@ -3,13 +3,11 @@ package com.example.myapplication;
 import android.Manifest;
 import android.app.Activity;
 import android.content.ContentResolver;
-import android.content.Context;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.database.Cursor;
 import android.net.Uri;
 import android.os.Bundle;
-import android.provider.ContactsContract;
 import android.provider.Telephony;
 
 import androidx.core.app.ActivityCompat;
@@ -35,46 +33,27 @@ public class SplashActivity extends Activity {
         // TODO: Establish session key otherwise prompt registration
         int permissionCheckReadSms = ContextCompat.checkSelfPermission(this, Manifest.permission.READ_SMS);
         int permissionCheckReadContacts = ContextCompat.checkSelfPermission(this, Manifest.permission.READ_CONTACTS);
+        int permissionCheckSendSms = ContextCompat.checkSelfPermission(this, Manifest.permission.SEND_SMS);
 
-        if (permissionCheckReadSms == PackageManager.PERMISSION_GRANTED && permissionCheckReadContacts == PackageManager.PERMISSION_GRANTED) {
+        if (permissionCheckReadSms == PackageManager.PERMISSION_GRANTED && permissionCheckReadContacts == PackageManager.PERMISSION_GRANTED && permissionCheckSendSms == PackageManager.PERMISSION_GRANTED) {
             SMSContacts.setContactList(populateSMSGroups());
 
             Intent mainIntent = new Intent(SplashActivity.this, MainActivity.class);
             startActivity(mainIntent);
             finish();
         } else {
-            ActivityCompat.requestPermissions(this, new String[]{Manifest.permission.READ_SMS, Manifest.permission.READ_CONTACTS}, 100);
+            ActivityCompat.requestPermissions(this, new String[]{Manifest.permission.READ_SMS, Manifest.permission.READ_CONTACTS, Manifest.permission.SEND_SMS}, 100);
+            Intent intent = getIntent();
+            finish();
+            startActivity(intent);
         }
         // TODO: Recalculate data structures on incoming notifications
         finish();
     }
 
-    public String getContactbyPhoneNumber(Context c, String phoneNumber) {
-
-        Uri uri = Uri.withAppendedPath(ContactsContract.PhoneLookup.CONTENT_FILTER_URI, Uri.encode(phoneNumber));
-        String[] projection = {ContactsContract.PhoneLookup.DISPLAY_NAME};
-        Cursor cursor = c.getContentResolver().query(uri, projection, null, null, null);
-        String name = "";
-
-        if (cursor == null) {
-            return name;
-        } else {
-            try {
-                if (cursor.moveToFirst()) {
-                    name = cursor.getString(cursor.getColumnIndex(ContactsContract.PhoneLookup.DISPLAY_NAME));
-                }
-
-            } finally {
-                cursor.close();
-            }
-            return name;
-        }
-    }
-
     public ArrayList<ContactDataModel> populateSMSGroups() {
         ContentResolver cr = getApplicationContext().getContentResolver();
 
-        // TODO: Can probably query for distinct address to save time
         Cursor cur = cr.query(Uri.parse("content://sms"),
                 new String[]{"DISTINCT thread_id", "address", "person", "body", "date"}, "thread_id IS NOT NULL) GROUP BY (thread_id", null, Telephony.Sms.DEFAULT_SORT_ORDER);
         ArrayList<ContactDataModel> contacts = new ArrayList<>();
@@ -96,7 +75,7 @@ public class SplashActivity extends Activity {
                 }
 
                 ContactDataModel contact = new ContactDataModel(address, threadId, body, dateLong);
-                String displayName = getContactbyPhoneNumber(getApplicationContext(), address);
+                String displayName = SMSContacts.getContactbyPhoneNumber(getApplicationContext(), address);
                 if (!displayName.isEmpty()) {
                     contact.setDisplayName(displayName);
                     contact.setPriority(ContactDataModel.Level.PRIORITY);
