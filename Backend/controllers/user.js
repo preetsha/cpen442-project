@@ -1,4 +1,6 @@
-const User = require('../models/user');
+const User = require("../models/user");
+const crypto = require("crypto");
+
 /*
 // Twilio Library
 const Twilio = require('twilio');
@@ -63,6 +65,67 @@ module.exports = {
     createUser: async (req, res) => {
         res.status(200).send({ "message": "This does nothing right now :/" });
     },
+    requestRegistration: async (req, res) => {
+        // Retrieve the phone number, pad it for AES encryption
+        const phone = req.body.phone_number;
+        const padded_phone = ("0000000000000000" + phone).slice(-16); // Pad phone number to 16 chars for encryption
+        
+        // Encrypt the phone number using the phone symmetric key
+        const iv = Buffer.from(process.env.PHONE_IV, "utf-8");
+        const key = Buffer.from(process.env.PHONE_KEY, "utf-8");
+        const cipher = crypto.createCipheriv('aes-256-cbc', key, iv);
+        const encrypted_phone = cipher.update(padded_phone, "utf-8", "hex");
+
+        // Compute hash of uuid and salt, picking a salt that allows for no hash collisions
+        
+        let salt = crypto.randomInt(1000000000);
+        let uuid = "";
+        
+        // Compute hash of phone number and salt, which is used as the UUID
+        do {
+            // NOTE: The invariant is that all UUID's will be unique
+            salt = (salt + 1) % 1000000000;
+            let sha = crypto.createHmac('sha256', String(salt));
+            
+            sha.update(phone);
+            uuid = sha.digest("hex");
+
+            // Check if the UUID is already in use
+            existingUser = await User.find({uuid: uuid}).catch(() => {
+                console.log(`UUID Collision! ${uuid} is already used!`);
+                return [];
+            });
+        } // Pick a new salt until we get a unique UUID
+        while (existingUser.length > 0);
+
+        // Generate nonce
+        const oneTimePass = crypto.randomInt(0, 1000000) // 6 digit number
+        const oneTimePassString = oneTimePass.toString().padStart(6, "0");
+        
+        // TODO Send SMS message
+        console.log(`Call F(x) to send SMS message: ${oneTimePassString}`);
+        
+        // Create unverified user
+        const d = new Date();
+        let newUser = {
+            uuid: uuid, // hash of phone number + salt
+            phone: encrypted_phone,
+            salt: salt,
+            session_key: null, 
+            time_requested_verification: d.getTime(),
+            expected_nonce: oneTimePassString,
+            time_completed_verification: null,
+            is_active_user: false,
+            is_verified: false,
+        }
+        await User.create(newUser);
+
+        res.status(201).send({ 
+            "message": `TODO Call function to send ${oneTimePassString} to ${phone}`,
+            "salt": String(salt),
+        });
+    }
+
     /*
     request: async (req, res) => {
         const clientSecret = req.body.client_secret;
