@@ -1,6 +1,8 @@
 package com.example.myapplication;
 
+import android.content.Intent;
 import android.os.Bundle;
+import android.provider.Telephony;
 import android.view.Menu;
 import android.view.View;
 
@@ -24,6 +26,8 @@ public class MainActivity extends AppCompatActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
 
+        //makeMyAppDefaultRequest(getPackageName());
+
         binding = ActivityMainBinding.inflate(getLayoutInflater());
         setContentView(binding.getRoot());
 
@@ -46,6 +50,18 @@ public class MainActivity extends AppCompatActivity {
         NavController navController = Navigation.findNavController(this, R.id.nav_host_fragment_content_main);
         NavigationUI.setupActionBarWithNavController(this, navController, mAppBarConfiguration);
         NavigationUI.setupWithNavController(navigationView, navController);
+    }
+
+    public void makeMyAppDefaultRequest(String packageName) {
+        System.out.println(Telephony.Sms.getDefaultSmsPackage(this));
+        if (Telephony.Sms.getDefaultSmsPackage(this).equals(packageName)) {
+            return;
+        } else {
+            Intent intent = new Intent(Telephony.Sms.Intents.ACTION_CHANGE_DEFAULT);
+            intent.putExtra(Telephony.Sms.Intents.EXTRA_PACKAGE_NAME, packageName);
+            startActivity(intent);
+            startActivityForResult(intent, 101);
+        }
     }
 
     @Override

@@ -48,4 +48,14 @@ public class SMSContacts {
             return name;
         }
     }
+
+    public static int getContactIndexByThread(String thread) {
+        for (int i = 0; i < contactList.size(); i++) {
+            final ContactDataModel c = contactList.get(i);
+            if (c.getThreadId().equals(thread)) {
+                return i;
+            }
+        }
+        return -1;
+    }
 }

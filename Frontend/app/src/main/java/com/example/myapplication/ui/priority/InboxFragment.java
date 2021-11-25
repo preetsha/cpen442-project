@@ -17,6 +17,7 @@ import com.example.myapplication.ContactDataModel;
 import com.example.myapplication.SMSContacts;
 import com.example.myapplication.databinding.FragmentInboxBinding;
 
+import java.util.ArrayList;
 import java.util.List;
 
 public class InboxFragment extends Fragment {
@@ -24,26 +25,16 @@ public class InboxFragment extends Fragment {
     private FragmentInboxBinding binding;
     ListView listView;
     private static ContactAdapter adapter;
+    private static List<ContactDataModel> contactList = new ArrayList<>();
 
     public View onCreateView(@NonNull LayoutInflater inflater,
                              ViewGroup container, Bundle savedInstanceState) {
 
         binding = FragmentInboxBinding.inflate(inflater, container, false);
         View root = binding.getRoot();
-
-        String priorityLevelStr = this.getArguments().getString("type");
-        ContactDataModel.Level priorityLevel = ContactDataModel.Level.REGULAR;
-        if (priorityLevelStr.equals("priority")) {
-            priorityLevel = ContactDataModel.Level.PRIORITY;
-        } else if (priorityLevelStr.equals("spam")) {
-            priorityLevel = ContactDataModel.Level.SPAM;
-        }
         listView = binding.contactList;
-        List<ContactDataModel> contactList = SMSContacts.getContactsByInbox(priorityLevel);
 
-        adapter = new ContactAdapter(contactList, getContext());
-
-        listView.setAdapter(adapter);
+        updateAdapter();
         listView.setOnItemClickListener(new AdapterView.OnItemClickListener() {
             @Override
             public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
@@ -54,16 +45,35 @@ public class InboxFragment extends Fragment {
                 chatIntent.putExtra("threadId", dataModel.getThreadId());
                 chatIntent.putExtra("name", dataModel.getDisplayName());
                 chatIntent.putExtra("address", dataModel.getNumber());
+                chatIntent.putExtra("priority", dataModel.getPriorityInt());
                 startActivity(chatIntent);
             }
         });
-
-        //TODO: .observe(getViewLifecycleOwner(), new Observer<String>() to detect changes maybe?
 
         return root;
 
     }
 
+    @Override
+    public void onResume() {
+        super.onResume();
+        updateAdapter();
+    }
+
+    private void updateAdapter() {
+        String priorityLevelStr = this.getArguments().getString("type");
+        ContactDataModel.Level priorityLevel = ContactDataModel.Level.REGULAR;
+        if (priorityLevelStr.equals("priority")) {
+            priorityLevel = ContactDataModel.Level.PRIORITY;
+        } else if (priorityLevelStr.equals("spam")) {
+            priorityLevel = ContactDataModel.Level.SPAM;
+        }
+
+        contactList = SMSContacts.getContactsByInbox(priorityLevel);
+        adapter = new ContactAdapter(contactList, getContext());
+
+        listView.setAdapter(adapter);
+    }
 
     @Override
     public void onDestroyView() {

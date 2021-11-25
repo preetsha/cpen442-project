@@ -7,6 +7,8 @@ import android.net.Uri;
 import android.os.Bundle;
 import android.provider.Telephony;
 import android.telephony.SmsManager;
+import android.view.Menu;
+import android.view.MenuItem;
 import android.view.View;
 import android.widget.Button;
 import android.widget.EditText;
@@ -26,7 +28,8 @@ public class ChatActivity extends AppCompatActivity {
     private String threadId = "";
     private String name = "";
     private String address = "";
-    private final List<SMSMessage> messageList = new ArrayList<>();
+    private int priority = 0;
+    private List<SMSMessage> messageList;
     private EditText textInput;
     private Button sendButton;
 
@@ -38,6 +41,7 @@ public class ChatActivity extends AppCompatActivity {
         threadId = extras.getString("threadId");
         name = extras.getString("name");
         address = extras.getString("address");
+        priority = extras.getInt("priority", 0);
 
         setContentView(R.layout.activity_chat);
 
@@ -65,10 +69,27 @@ public class ChatActivity extends AppCompatActivity {
         mMessageAdapter = new SMSListAdapter(this, messageList);
         mMessageRecycler.setAdapter(mMessageAdapter);
         LinearLayoutManager llm = new LinearLayoutManager(this);
-        llm.setReverseLayout(true);
+        llm.setReverseLayout(false);
         llm.setStackFromEnd(true);
         mMessageRecycler.setLayoutManager(llm);
-        mMessageRecycler.scrollToPosition(0);
+        mMessageRecycler.scrollToPosition(messageList.size() - 1);
+
+        mMessageRecycler.addOnLayoutChangeListener(new View.OnLayoutChangeListener() {
+            @Override
+            public void onLayoutChange(View v,
+                                       int left, int top, int right, int bottom,
+                                       int oldLeft, int oldTop, int oldRight, int oldBottom) {
+                if (bottom < oldBottom || bottom > oldBottom) {
+                    mMessageRecycler.postDelayed(new Runnable() {
+                        @Override
+                        public void run() {
+                            mMessageRecycler.smoothScrollToPosition(
+                                    mMessageRecycler.getAdapter().getItemCount() - 1);
+                        }
+                    }, 100);
+                }
+            }
+        });
     }
 
     @Override
@@ -80,14 +101,14 @@ public class ChatActivity extends AppCompatActivity {
     private void populateMessageList() {
         ContentResolver cr = getApplicationContext().getContentResolver();
         Cursor cur = cr.query(Uri.parse("content://sms"),
-                new String[]{"thread_id", "person", "body", "date"}, "thread_id=" + threadId, null, Telephony.Sms.DEFAULT_SORT_ORDER);
+                new String[]{"thread_id", "person", "body", "date"}, "thread_id=" + threadId, null, "date ASC");
 
+        messageList = new ArrayList<>();
         try {
             while (cur.moveToNext()) {
                 long dateLong = cur.getLong(cur.getColumnIndexOrThrow(Telephony.Sms.DATE));
                 String body = cur.getString(cur.getColumnIndexOrThrow(Telephony.Sms.BODY));
                 int person = cur.getInt(cur.getColumnIndexOrThrow(Telephony.Sms.PERSON));
-                // TODO: buttons, sending
 
                 boolean sent = false;
                 if (person == 0) {
@@ -115,6 +136,63 @@ public class ChatActivity extends AppCompatActivity {
                 Toast.LENGTH_LONG).show();
 
         textInput.setText("");
-        mMessageRecycler.invalidate();
+
+        final int idx = SMSContacts.getContactIndexByThread(threadId);
+        ContactDataModel c = SMSContacts.getContactList().get(idx);
+        c.setSnippet(msgBody);
+        SMSContacts.contactList.set(idx, c);
+
+        mMessageAdapter = new SMSListAdapter(this, messageList);
+        mMessageRecycler.setAdapter(mMessageAdapter);
+        mMessageRecycler.scrollToPosition(messageList.size() - 1);
+    }
+
+    @Override
+    public boolean onCreateOptionsMenu(Menu menu) {
+        // Inflate the menu; this adds items to the action bar if it is present.
+        getMenuInflater().inflate(R.menu.activity_chat_header, menu);
+        return true;
+    }
+
+    @Override
+    public boolean onPrepareOptionsMenu(Menu menu) {
+        super.onPrepareOptionsMenu(menu);
+        MenuItem menuTrust = menu.findItem(R.id.mark_trusted_action);
+        MenuItem menuSpam = menu.findItem(R.id.mark_spam_action);
+
+        if (priority == 1) {
+            menuTrust.setVisible(false);
+        } else if (priority == -1) {
+            menuSpam.setVisible(false);
+        }
+        return true;
+    }
+
+    @Override
+    public boolean onOptionsItemSelected(MenuItem item) {
+        // Handle action bar item clicks here.
+        int id = item.getItemId();
+        final int idx = SMSContacts.getContactIndexByThread(threadId);
+        ContactDataModel c = SMSContacts.getContactList().get(idx);
+
+        if (id == R.id.mark_trusted_action) {
+
+            System.out.println("MARK TRUSTED");
+            c.setPriority(ContactDataModel.Level.PRIORITY);
+            priority = 1;
+            SMSContacts.contactList.set(idx, c);
+            onBackPressed();
+            return true;
+        } else if (id == R.id.mark_spam_action) {
+            System.out.println("MARK SPAM");
+
+            c.setPriority(ContactDataModel.Level.SPAM);
+            priority = -1;
+            SMSContacts.contactList.set(idx, c);
+            onBackPressed();
+            return true;
+        }
+
+        return super.onOptionsItemSelected(item);
     }
 }

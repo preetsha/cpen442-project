@@ -70,9 +70,6 @@ public class SplashActivity extends Activity {
                 long dateLong = cur.getLong(cur.getColumnIndexOrThrow(Telephony.Sms.DATE));
                 String body = cur.getString(cur.getColumnIndexOrThrow(Telephony.Sms.BODY));
                 //int person = cur.getInt(cur.getColumnIndexOrThrow(Telephony.Sms.PERSON));
-                if (body.length() > 45) {
-                    body = body.substring(0, 42) + "...";
-                }
 
                 ContactDataModel contact = new ContactDataModel(address, threadId, body, dateLong);
                 String displayName = SMSContacts.getContactbyPhoneNumber(getApplicationContext(), address);
