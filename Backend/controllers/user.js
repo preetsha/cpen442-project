@@ -1,6 +1,5 @@
 const User = require("../models/user");
 const crypto = require("crypto");
-
 /*
 // Twilio Library
 const Twilio = require('twilio');
@@ -66,15 +65,15 @@ module.exports = {
         res.status(200).send({ "message": "This does nothing right now :/" });
     },
     requestRegistration: async (req, res) => {
-        // Retrieve the phone number, pad it for AES encryption
-        const phone = req.body.phone_number;
-        const padded_phone = ("0000000000000000" + phone).slice(-16); // Pad phone number to 16 chars for encryption
+        const phoneNumber = req.body.phone_number;
+        const paddedPhone = ("0000000000000000" + phoneNumber).slice(-16); // Pad phone number to 16 chars for encryption
         
+        console.log(paddedPhone);
         // Encrypt the phone number using the phone symmetric key
         const iv = Buffer.from(process.env.PHONE_IV, "utf-8");
         const key = Buffer.from(process.env.PHONE_KEY, "utf-8");
         const cipher = crypto.createCipheriv('aes-256-cbc', key, iv);
-        const encrypted_phone = cipher.update(padded_phone, "utf-8", "hex");
+        const encryptedPhone = cipher.update(paddedPhone, "utf-8", "hex");
 
         // Compute hash of uuid and salt, picking a salt that allows for no hash collisions
         
@@ -87,7 +86,7 @@ module.exports = {
             salt = (salt + 1) % 1000000000;
             let sha = crypto.createHmac('sha256', String(salt));
             
-            sha.update(phone);
+            sha.update(phoneNumber);
             uuid = sha.digest("hex");
 
             // Check if the UUID is already in use
@@ -99,7 +98,8 @@ module.exports = {
         while (existingUser.length > 0);
 
         // Generate nonce
-        const oneTimePass = crypto.randomInt(0, 1000000) // 6 digit number
+        // const oneTimePass = crypto.randomInt(0, 1000000) // 6 digit number
+        const oneTimePass = 101234 // 6 digit number
         const oneTimePassString = oneTimePass.toString().padStart(6, "0");
         
         // TODO Send SMS message
@@ -109,22 +109,67 @@ module.exports = {
         const d = new Date();
         let newUser = {
             uuid: uuid, // hash of phone number + salt
-            phone: encrypted_phone,
+            phone: encryptedPhone,
             salt: salt,
+            shared_secret: null,
             session_key: null, 
             time_requested_verification: d.getTime(),
             expected_nonce: oneTimePassString,
             time_completed_verification: null,
-            is_active_user: false,
+            is_active_user: true,
             is_verified: false,
         }
         await User.create(newUser);
 
         res.status(201).send({ 
-            "message": `TODO Call function to send ${oneTimePassString} to ${phone}`,
-            "salt": String(salt),
+            "message": `TODO Call function to send ${oneTimePassString} to ${phoneNumber}`,
         });
-    }
+    },
+    finishRegistration: async (req, res) => {
+        // Decrypt the message using the server's private key
+        const unencryptedReq = req;
+        const oneTimePass = unencryptedReq.body.one_time_pass;
+        const sharedSecret = unencryptedReq.body.shared_secret;
+        const phoneNumber = unencryptedReq.body.phone_number;
+
+        const paddedPhone = ("0000000000000000" + phoneNumber).slice(-16); // Pad phone number to 16 chars for encryption
+        console.log(paddedPhone);
+        // Encrypt the phone number using the phone symmetric key
+        const iv = Buffer.from(process.env.PHONE_IV, "utf-8");
+        const key = Buffer.from(process.env.PHONE_KEY, "utf-8");
+        const cipher = crypto.createCipheriv('aes-256-cbc', key, iv);
+        const encryptedPhone = cipher.update(paddedPhone, "utf-8", "hex");
+        
+        // Find user corresponding to the phone number
+        console.log(encryptedPhone);
+        const user = await User.findOne({ phone: encryptedPhone }).catch(() => null);
+
+        if (user) {
+            // Confirm the code matches
+            console.log(user)
+            if (user.expected_nonce != oneTimePass) {
+                console.log(user.expected_nonce);
+                console.log(oneTimePass);
+                res.status(401).send({});
+                return;
+            }
+            // Extracting and saving the shared secret
+            user.shared_secret = sharedSecret;
+
+            // Update verif complete time, set verified, set is_active_user
+            d = new Date();
+            user.is_verified = true;
+            user.time_completed_verification = d.getTime();
+
+            await user.save();
+
+            // Send back the phone number and salt, encrypted with the shared secret
+            res.status(201).send({ phone: phoneNumber, salt: user.salt })
+        }
+        else {
+            res.status(404).send({});
+        }
+    },
 
     /*
     request: async (req, res) => {
