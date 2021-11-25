@@ -164,6 +164,8 @@ public class EnterOTPFragment extends Fragment {
                     @Override
                     public void onErrorResponse(VolleyError error) {
                         // TODO: Move this to onResponse when API is ready, add toast back
+                        SMSContacts.setContactList(SMSContacts.populateSMSGroups(getContext()));
+
                         Intent mainIntent = new Intent(getActivity(), MainActivity.class);
                         startActivity(mainIntent);
                         // Toast.makeText(getContext(), "Please try again later", Toast.LENGTH_SHORT).show();
