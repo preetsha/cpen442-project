@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<navigation xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/nav_graph"
+    app:startDestination="@id/RegistrationFragment">
+
+    <fragment
+        android:id="@+id/RegistrationFragment"
+        android:name="com.example.myapplication.RegistrationFragment"
+        android:label="@string/registration_label"
+        tools:layout="@layout/fragment_registration">
+
+        <action
+            android:id="@+id/action_RegistrationFragment_to_EnterOTPFragment"
+            app:destination="@id/EnterOTPFragment" />
+    </fragment>
+    <fragment
+        android:id="@+id/EnterOTPFragment"
+        android:name="com.example.myapplication.EnterOTPFragment"
+        android:label="@string/enter_otp_label"
+        tools:layout="@layout/fragment_enter_otp">
+
+        <action
+            android:id="@+id/action_EnterOTPFragment_to_RegistrationFragment"
+            app:destination="@id/RegistrationFragment" />
+    </fragment>
+</navigation>

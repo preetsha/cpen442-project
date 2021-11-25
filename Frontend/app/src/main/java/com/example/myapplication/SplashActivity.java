@@ -31,6 +31,7 @@ public class SplashActivity extends Activity {
 
         // TODO: Check for condition we are in (check for existing shared secret or cache) otherwise prompt registration
         // TODO: Establish session key otherwise prompt registration
+        // TODO: This should effectively ensure a user is authenticated or not
         int permissionCheckReadSms = ContextCompat.checkSelfPermission(this, Manifest.permission.READ_SMS);
         int permissionCheckReadContacts = ContextCompat.checkSelfPermission(this, Manifest.permission.READ_CONTACTS);
         int permissionCheckSendSms = ContextCompat.checkSelfPermission(this, Manifest.permission.SEND_SMS);
@@ -42,10 +43,8 @@ public class SplashActivity extends Activity {
             startActivity(mainIntent);
             finish();
         } else {
-            ActivityCompat.requestPermissions(this, new String[]{Manifest.permission.READ_SMS, Manifest.permission.READ_CONTACTS, Manifest.permission.SEND_SMS}, 100);
-            Intent intent = getIntent();
-            finish();
-            startActivity(intent);
+            Intent registrationIntent = new Intent(SplashActivity.this, RegistrationActivity.class);
+            startActivity(registrationIntent);
         }
         // TODO: Recalculate data structures on incoming notifications
         finish();

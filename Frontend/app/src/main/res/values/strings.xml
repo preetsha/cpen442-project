@@ -6,4 +6,17 @@
     <string name="priority_inbox">Priority</string>
     <string name="regular_inbox">Regular</string>
     <string name="spam_inbox">Spam</string>
+    <string name="title_activity_registration">RegistrationActivity</string>
+    <string name="trust_sms">TrustSMS</string>
+    <string name="did_not_receive">Did not receive OTP code or timed out? Click below to have a new one sent to you.</string>
+    <string name="register">Register</string>
+    <string name="resend">Resend Code</string>
+    <string name="phone_number">Phone Number</string>
+    <string name="otp_code_label">OTP Code</string>
+    <string name="otp_code_sent">A one-time password (OTP) code has been sent to the number ending in %1$s. Please enter the code below to complete your registration</string>
+    <string name="back_arrow_icon_desc">Back</string>
+
+    <!-- Strings used for fragments for navigation -->
+    <string name="enter_otp_label">Enter OTP</string>
+    <string name="registration_label">Registration</string>
 </resources>
