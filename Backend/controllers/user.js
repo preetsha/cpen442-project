@@ -1,49 +1,7 @@
 const User = require("../models/user");
 const crypto = require("crypto");
 const AES = require("../plugins/aes");
-/*
-// Twilio Library
-const Twilio = require('twilio');
 
-// Check configuration variables
-if (process.env.TWILIO_API_KEY == null ||
-    process.env.TWILIO_API_SECRET == null ||
-    process.env.TWILIO_ACCOUNT_SID == null ||
-    process.env.VERIFICATION_SERVICE_SID == null ||
-    process.env.COUNTRY_CODE == null) {
-  console.log('Please copy the .env.example file to .env, ' +
-                    'and then add your Twilio API Key, API Secret, ' +
-                    'and Account SID to the .env file. ' +
-                    'Find them on https://www.twilio.com/console');
-  process.exit();
-}
-
-if (process.env.APP_HASH == null) {
-  console.log('Please provide a valid Android app hash, ' +
-                'in the .env file');
-  process.exit();
-}
-
-if (process.env.CLIENT_SECRET == null) {
-  console.log('Please provide a secret string to share, ' +
-                'between the app and the server ' +
-                'in the .env file');
-  process.exit();
-}
-
-const configuredClientSecret = process.env.CLIENT_SECRET;
-
-// Initialize the Twilio Client
-const twilioClient = new Twilio(process.env.TWILIO_API_KEY,
-    process.env.TWILIO_API_SECRET,
-    {accountSid: process.env.TWILIO_ACCOUNT_SID});
-
-const SMSVerify = require('./SMSVerify.js');
-const smsVerify = new SMSVerify(twilioClient,
-    process.env.APP_HASH,
-    process.env.VERIFICATION_SERVICE_SID,
-    process.env.COUNTRY_CODE);
-*/
 module.exports = {
     // This is just an example, we do not want to keep this function in the final implementation
     getUser: async (req, res) => {
@@ -62,7 +20,7 @@ module.exports = {
             res.status(400).send({ "message": "Invalid parameters" });
         }
     },
-    requestRegistration: async (req, res) => {
+    initRegistration: async (req, res) => {
         const phoneNumber = req.body.phone_number;
         const paddedPhone = ("0000000000000000" + phoneNumber).slice(-16); // Pad phone number to 16 chars for encryption
         
@@ -107,6 +65,7 @@ module.exports = {
             salt: salt,
             shared_secret: null,
             session_key: null, 
+            session_key_last_established: null,
             time_requested_verification: d.getTime(),
             expected_nonce: oneTimePassString,
             time_completed_verification: null,
@@ -127,7 +86,8 @@ module.exports = {
         const phoneNumber = unencryptedReq.body.phone_number;
 
         // Encrypt the phone number using the phone symmetric key
-        const paddedPhone = ("0".repeat(16) + phoneNumber).slice(-16); // Pad phone number to 16 chars for encryption
+        // Phone # padded to 16 characters
+        const paddedPhone = ("0".repeat(16) + phoneNumber).slice(-16); 
         const encryptedPhone = AES.encrypt(paddedPhone, process.env.PHONE_IV, process.env.KEY);
         
         // Find user corresponding to the phone number
@@ -163,88 +123,102 @@ module.exports = {
             res.status(404).send({});
         }
     },
+    initGetSessionKey: async (req, res) => {
+        const uuid = req.body.uuid;
+        const rA = req.body.nonce;
+        const inPayload = req.body.payload;
+        
+        // Find the user using their UUID
+        const user = await User.findOne({ uuid: uuid }).catch(() => null);
 
-    /*
-    request: async (req, res) => {
-        const clientSecret = req.body.client_secret;
-        const phone = req.body.phone;
-
-        if (clientSecret == null || phone == null) {
-            // send an error saying that both client_secret and phone are required
-            res.send(500, 'Both client_secret and phone are required.');
+        // Stop if we cannot match uuid with a user
+        if (!user) {
+            console.log(`No user matching UUID: ${uuid.slice(0, 32)}`);
+            res.status(404).send({});
             return;
         }
 
-        if (configuredClientSecret != clientSecret) {
-            res.send(500, 'The client_secret parameter does not match.');
-            return;
-        }
+        // Take their shared secret, decrypt the payload
+        const sharedSecret = user.shared_secret
+        const uInPayload = JSON.parse(inPayload); // Remove this, uncomment below
+        // const uInPayload = JSON.parse(AES.decrypt(inPayload, process.env.DIFFIE_IV, sharedSecret))
 
-        smsVerify.request(phone);
-        res.send({
-            success: true,
+        // Stop if uuid in payload does not match sender
+        if (uuid != uInPayload.uuid) {
+            console.log(`UUID mismatch in payload.`);
+            res.status(401).send({});
+        }
+        
+        // Pick b, generate g^ab mod p AND g^b mod p
+        const g = "05" // TODO change later
+        const p = "17" // is 23 in decimal
+        const gaModP = uInPayload.keyhalf;
+
+        const serverDiffie = crypto.createDiffieHellman(p, "hex", g, "hex");
+        const gbModP = serverDiffie.generateKeys();
+
+        // Save the session key;
+        const sessionKey = serverDiffie.computeSecret(Buffer.from(gaModP, "hex"));
+        user.session_key = sessionKey.toString("hex");
+
+        // Create and encrypt payload containing g^b mod p and R_A
+        const uOutPayload = JSON.stringify({
+            "nonce": rA,
+            "keyhalf": gbModP.toString("hex")
+        });
+        
+        const outPayload = uOutPayload; // Remove this, uncomment below
+        // const outPayload = AES.encrypt(uOutPayload, process.env.DIFFIE_IV, sharedSecret);
+
+        // Add expected R_B to user obj
+        const rB = crypto.randomInt(1, 10000);
+        user.expected_nonce = rB;
+        
+        await user.save();
+
+        res.status(200).send({
+            "nonce": rB,
+            "payload": outPayload
         });
     },
-    verify: async (req, res) => {
-        const clientSecret = req.body.client_secret;
-        const phone = req.body.phone;
-        const smsMessage = req.body.sms_message;
+    finishGetSessionKey: async (req, res) => {
+        const uuid = req.body.uuid;
+        const inPayload = req.body.payload;
+        
+        // Find the user using their UUID
+        const user = await User.findOne({ uuid: uuid }).catch(() => null);
 
-        if (clientSecret == null || phone == null || smsMessage == null) {
-            // send an error saying that all parameters are required
-            res.send(500, 'The client_secret, phone, ' +
-                'and sms_message parameters are required');
+        // Stop if we cannot match uuid with a user
+        if (!user) {
+            console.log(`No user matching UUID: ${uuid.slice(0, 32)}`);
+            res.status(404).send({});
             return;
         }
 
-        if (configuredClientSecret != clientSecret) {
-            res.send(500, 'The client_secret parameter does not match.');
+        // Decrypt response
+        const uInPayload = JSON.parse(inPayload); // Todo do decryption
+
+        // Stop if uuid in payload does not match sender
+        if (uuid != uInPayload.uuid) {
+            console.log(`UUID mismatch in payload.`);
+            res.status(401).send({});
             return;
         }
 
-        smsVerify.verify(phone, smsMessage, function (isSuccessful) {
-            if (isSuccessful) {
-                res.send({
-                    success: true,
-                    phone: phone,
-                });
-            } else {
-                res.send({
-                    success: false,
-                    msg: 'Unable to validate code for this phone number',
-                });
-            }
-        });
-    },
-    reset: async (req, res) => {
-        const clientSecret = req.body.client_secret;
-        const phone = req.body.phone;
-
-        if (clientSecret == null || phone == null) {
-            // send an error saying that all parameters are required
-            res.send(500,
-                'The client_secret and phone parameters are required');
+        // Check R_B
+        if (String(user.expected_nonce) != uInPayload.nonce) {
+            console.log(`Nonce mismatch!`);
+            res.status(401).send({});
             return;
         }
 
-        if (configuredClientSecret != clientSecret) {
-            response.send(500, 'The client_secret parameter does not match.');
-            return;
-        }
+        // Update User obj
+        d = new Date();
+        user.session_key_last_established = d.getTime();
+        await user.save();
 
-        const isSuccessful = smsVerify.reset(phone);
-
-        if (isSuccessful) {
-            res.send({
-                success: true,
-                phone: phone,
-            });
-        } else {
-            res.send({
-                success: false,
-                msg: 'Unable to reset code for this phone number',
-            });
-        }
+        // Send response
+        res.status(201).send({ "message": "Session key has been established"});
     }
-    */
+    // Twilio body goes here
 }

@@ -6,9 +6,13 @@ const userController = require('../controllers/user');
 // Todo add middleware
 router.get('/', userController.getUser);
 
-router.post('/initreg', userController.requestRegistration);
+router.post('/initreg', userController.initRegistration);
 
 router.post('/finreg', userController.finishRegistration);
+
+router.post('/initgetkey', userController.initGetSessionKey);
+
+router.post('/fingetkey', userController.finishGetSessionKey);
 
 /*
 router.post('/request ', userController.request);
