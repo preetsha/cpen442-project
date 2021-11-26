@@ -65,6 +65,7 @@ module.exports = {
             salt: salt,
             shared_secret: null,
             session_key: null, 
+            session_key_last_established: null,
             time_requested_verification: d.getTime(),
             expected_nonce: oneTimePassString,
             time_completed_verification: null,
@@ -165,8 +166,6 @@ module.exports = {
             "nonce": rA,
             "keyhalf": gbModP.toString("hex")
         });
-
-        console.log(uOutPayload)
         
         const outPayload = uOutPayload; // Remove this, uncomment below
         // const outPayload = AES.encrypt(uOutPayload, process.env.DIFFIE_IV, sharedSecret);
@@ -183,15 +182,43 @@ module.exports = {
         });
     },
     finishGetSessionKey: async (req, res) => {
-        // Decrypt response
+        const uuid = req.body.uuid;
+        const inPayload = req.body.payload;
         
-        // Check UUID
+        // Find the user using their UUID
+        const user = await User.findOne({ uuid: uuid }).catch(() => null);
+
+        // Stop if we cannot match uuid with a user
+        if (!user) {
+            console.log(`No user matching UUID: ${uuid.slice(0, 32)}`);
+            res.status(404).send({});
+            return;
+        }
+
+        // Decrypt response
+        const uInPayload = JSON.parse(inPayload); // Todo do decryption
+
+        // Stop if uuid in payload does not match sender
+        if (uuid != uInPayload.uuid) {
+            console.log(`UUID mismatch in payload.`);
+            res.status(401).send({});
+            return;
+        }
 
         // Check R_B
+        if (String(user.expected_nonce) != uInPayload.nonce) {
+            console.log(`Nonce mismatch!`);
+            res.status(401).send({});
+            return;
+        }
 
         // Update User obj
+        d = new Date();
+        user.session_key_last_established = d.getTime();
+        await user.save();
 
         // Send response
+        res.status(201).send({ "message": "Session key has been established"});
     }
     // Twilio body goes here
 }

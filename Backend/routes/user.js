@@ -12,6 +12,8 @@ router.post('/finreg', userController.finishRegistration);
 
 router.post('/initgetkey', userController.initGetSessionKey);
 
+router.post('/fingetkey', userController.finishGetSessionKey);
+
 /*
 router.post('/request ', userController.request);
 
