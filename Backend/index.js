@@ -16,7 +16,7 @@ app.use("/debug", debugRouter);
 app.use("/user", userRouter);
 
 // Listen on PORT
-const server = app.listen(process.env.PORT, function () { // TODO Read process.env.PORT
+const server = app.listen(process.env.PORT, function () {
     const host = server.address().address;
     const port = server.address().port;
     console.log("Listening at http://%s:%s", host, port);
