@@ -1,5 +1,6 @@
 const User = require("../models/user");
 const crypto = require("crypto");
+const AES = require("../plugins/aes");
 /*
 // Twilio Library
 const Twilio = require('twilio');
@@ -61,22 +62,15 @@ module.exports = {
             res.status(400).send({ "message": "Invalid parameters" });
         }
     },
-    createUser: async (req, res) => {
-        res.status(200).send({ "message": "This does nothing right now :/" });
-    },
     requestRegistration: async (req, res) => {
         const phoneNumber = req.body.phone_number;
         const paddedPhone = ("0000000000000000" + phoneNumber).slice(-16); // Pad phone number to 16 chars for encryption
         
         console.log(paddedPhone);
         // Encrypt the phone number using the phone symmetric key
-        const iv = Buffer.from(process.env.PHONE_IV, "utf-8");
-        const key = Buffer.from(process.env.PHONE_KEY, "utf-8");
-        const cipher = crypto.createCipheriv('aes-256-cbc', key, iv);
-        const encryptedPhone = cipher.update(paddedPhone, "utf-8", "hex");
+        const encryptedPhone = AES.encrypt(paddedPhone, process.env.PHONE_IV, process.env.KEY);
 
         // Compute hash of uuid and salt, picking a salt that allows for no hash collisions
-        
         let salt = crypto.randomInt(1000000000);
         let uuid = "";
         
@@ -132,24 +126,17 @@ module.exports = {
         const sharedSecret = unencryptedReq.body.shared_secret;
         const phoneNumber = unencryptedReq.body.phone_number;
 
-        const paddedPhone = ("0000000000000000" + phoneNumber).slice(-16); // Pad phone number to 16 chars for encryption
-        console.log(paddedPhone);
         // Encrypt the phone number using the phone symmetric key
-        const iv = Buffer.from(process.env.PHONE_IV, "utf-8");
-        const key = Buffer.from(process.env.PHONE_KEY, "utf-8");
-        const cipher = crypto.createCipheriv('aes-256-cbc', key, iv);
-        const encryptedPhone = cipher.update(paddedPhone, "utf-8", "hex");
+        const paddedPhone = ("0".repeat(16) + phoneNumber).slice(-16); // Pad phone number to 16 chars for encryption
+        const encryptedPhone = AES.encrypt(paddedPhone, process.env.PHONE_IV, process.env.KEY);
         
         // Find user corresponding to the phone number
-        console.log(encryptedPhone);
         const user = await User.findOne({ phone: encryptedPhone }).catch(() => null);
 
         if (user) {
             // Confirm the code matches
-            console.log(user)
             if (user.expected_nonce != oneTimePass) {
-                console.log(user.expected_nonce);
-                console.log(oneTimePass);
+                console.log("Nonce value mismatch!");
                 res.status(401).send({});
                 return;
             }
@@ -160,11 +147,17 @@ module.exports = {
             d = new Date();
             user.is_verified = true;
             user.time_completed_verification = d.getTime();
-
             await user.save();
 
-            // Send back the phone number and salt, encrypted with the shared secret
-            res.status(201).send({ phone: phoneNumber, salt: user.salt })
+            const unencryptedResponse = { 
+                phone: phoneNumber, 
+                salt: user.salt,
+            }
+
+            // Encrypt and send the response object
+            const paddedSharedSecret = (sharedSecret + "0".repeat(32)).slice(0, 32);
+            const encryptedResponse = AES.encrypt(JSON.stringify(unencryptedResponse), process.env.REGISTRATION_IV, paddedSharedSecret);
+            res.status(201).send(unencryptedResponse); // TODO Send back encryptedResponse
         }
         else {
             res.status(404).send({});
