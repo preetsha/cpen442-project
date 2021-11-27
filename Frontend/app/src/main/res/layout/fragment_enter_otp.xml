@@ -31,26 +31,47 @@
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toBottomOf="@id/button_otp_back" />
 
-    <com.google.android.material.textfield.TextInputLayout
-        android:id="@+id/enterOTPContainer"
-        style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
-        android:layout_width="250dp"
+    <LinearLayout
+        android:id="@+id/verifyCodeContainer"
+        android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:hint="@string/otp_code_label"
-        app:errorEnabled="true"
-        app:counterEnabled="true"
-        app:counterMaxLength="6"
+        android:gravity="bottom"
+        android:orientation="vertical"
+        android:paddingBottom="16dp"
         app:layout_constraintBottom_toTopOf="@id/resendCodeContainer"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toBottomOf="@id/textview_otp_code_sent">
 
-        <com.google.android.material.textfield.TextInputEditText
-            android:layout_width="match_parent"
+        <com.google.android.material.textfield.TextInputLayout
+            android:id="@+id/enterOTPContainer"
+            style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
+            android:layout_width="250dp"
             android:layout_height="wrap_content"
-            android:inputType="number" />
+            android:hint="@string/otp_code_label"
+            app:errorEnabled="true"
+            app:counterEnabled="true"
+            app:counterMaxLength="6"
+            app:layout_constraintBottom_toTopOf="@id/resendCodeContainer"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toBottomOf="@id/textview_otp_code_sent">
 
-    </com.google.android.material.textfield.TextInputLayout>
+            <com.google.android.material.textfield.TextInputEditText
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:inputType="number" />
+
+        </com.google.android.material.textfield.TextInputLayout>
+
+        <Button
+            android:id="@+id/button_verify"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center"
+            android:text="@string/verify" />
+
+    </LinearLayout>
 
     <LinearLayout
         android:id="@+id/resendCodeContainer"
@@ -62,7 +83,7 @@
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@id/enterOTPContainer">
+        app:layout_constraintTop_toBottomOf="@id/verifyCodeContainer">
 
         <TextView
             android:id="@+id/textview_second"
@@ -77,7 +98,8 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_gravity="center"
-            android:text="@string/resend" />
+            android:text="@string/resend"
+            style="?attr/materialButtonOutlinedStyle"/>
 
     </LinearLayout>
 
