@@ -16,7 +16,7 @@ module.exports = {
         const cipher = crypto.createCipheriv('aes-256-cbc', key, iv);
         const encrypted = cipher.update(plaintext, "utf-8", "hex");
 
-        return encrypted;
+        return encrypted + cipher.final("hex");
     },
 
     decrypt: (ciphertext, ivString, keyString) => {
@@ -32,8 +32,8 @@ module.exports = {
         const iv = Buffer.from(ivString, "utf-8");
         const key = Buffer.from(keyString, "utf-8");
         const cipher = crypto.createDecipheriv('aes-256-cbc', key, iv);
-        const decrypted = cipher.update(ciphertext, "utf-8", "hex");
+        const decrypted = cipher.update(ciphertext, "hex", "utf-8");
 
-        return decrypted;
+        return decrypted + cipher.final("hex");
     }
 }

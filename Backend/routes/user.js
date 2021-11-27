@@ -1,4 +1,5 @@
 const express = require('express');
+const auth = require('../middleware/auth');
 const router = express.Router();
 
 const userController = require('../controllers/user');
@@ -14,6 +15,10 @@ router.post('/initgetkey', userController.initGetSessionKey);
 
 router.post('/fingetkey', userController.finishGetSessionKey);
 
+router.post('/test', auth.verifyMessage, (req, res) => { 
+    console.log("SUCCESS");
+    res.status(200).send({"message": "success"});
+});
 /*
 router.post('/request ', userController.request);
 
