@@ -79,8 +79,8 @@ public class RegistrationFragment extends Fragment {
                     // Display Error Dialog if Server is Unavailable
                     // Instantiate the RequestQueue.
                     RequestQueue queue = Volley.newRequestQueue(getContext());
-                    String root ="ec2-54-241-2-134.us-west-1.compute.amazonaws.com:8080";
-                    String route ="/user/request";
+                    String root ="http://ec2-54-241-2-134.us-west-1.compute.amazonaws.com:8080";
+                    String route ="/user/initreg";
                     String url = root + route;
                     JSONObject jsonBody = new JSONObject();
                     try {
@@ -90,12 +90,12 @@ public class RegistrationFragment extends Fragment {
                     }
                     // Request a string response from the provided URL.
                     String requestBody = jsonBody.toString();
-                    JsonObjectRequest jsonRequest = new JsonObjectRequest(Request.Method.GET, url, jsonBody,
+                    JsonObjectRequest jsonRequest = new JsonObjectRequest(Request.Method.POST, url, jsonBody,
                         new Response.Listener<JSONObject>() {
                             @Override
                             public void onResponse(JSONObject response) {
                                 // Display the first 500 characters of the response string.
-                                Toast.makeText(getContext(), "Response is: "+ response.toString().substring(0,500), Toast.LENGTH_SHORT).show();
+                                Toast.makeText(getContext(), "Response is: "+ response.toString(), Toast.LENGTH_SHORT).show();
                             }
                         }, new Response.ErrorListener() {
                             @Override

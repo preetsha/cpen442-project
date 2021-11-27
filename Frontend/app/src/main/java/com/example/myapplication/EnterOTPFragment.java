@@ -94,6 +94,18 @@ public class EnterOTPFragment extends Fragment {
             }
         });
 
+        binding.buttonVerify.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                // TODO: Save token/secret if verification is successful
+                // Instantiate the RequestQueue.
+                Log.d("OTP LENGTH", String.valueOf(otp.length()));
+                if (otp.length() == OTP_CODE_LENGTH) {
+                    verifyPhoneNumber();
+                }
+            }
+        });
+
         binding.buttonOtpBack.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
@@ -118,6 +130,56 @@ public class EnterOTPFragment extends Fragment {
         binding = null;
     }
 
+    private void verifyPhoneNumber() {
+        RequestQueue queue = Volley.newRequestQueue(getContext());
+        String root ="http://ec2-54-241-2-134.us-west-1.compute.amazonaws.com:8080";
+        String route ="/user/finreg";
+        String url = root + route;
+        JSONObject jsonBody = new JSONObject();
+        try {
+            jsonBody.put("phone_number", phoneNumber);
+            jsonBody.put("shared_secret", sharedSecret);
+            jsonBody.put("one_time_pass", "101234");
+        } catch (Exception e) {
+            Log.d("FIN REGISTRATION", "JSON body put error");
+        }
+        // Request a string response from the provided URL.
+        String requestBody = jsonBody.toString();
+        JsonObjectRequest jsonRequest = new JsonObjectRequest(Request.Method.POST, url, jsonBody,
+            new Response.Listener<JSONObject>() {
+                @Override
+                public void onResponse(JSONObject response) {
+                    // Display the first 500 characters of the response string.
+                    try {
+                        String salt = response.getString("salt");
+                        sharedPreferences.edit()
+                                .putString("SALT", salt)
+                                .apply();
+                        sharedPreferences.edit()
+                                .putString("SECRET", sharedSecret)
+                                .apply();
+                    } catch (JSONException je) {
+                        Log.e("FIN REGISTRATION", "onResponse: ", je);
+                    }
+                    Toast.makeText(getContext(), "Response is: "+ response.toString(), Toast.LENGTH_SHORT).show();
+                    SMSContacts.setContactList(SMSContacts.populateSMSGroups(getContext()));
+
+                    Intent mainIntent = new Intent(getActivity(), MainActivity.class);
+                    startActivity(mainIntent);
+                }
+            }, new Response.ErrorListener() {
+                @Override
+                public void onErrorResponse(VolleyError error) {
+                    Toast.makeText(getContext(), "Please try again later", Toast.LENGTH_SHORT).show();
+                    Log.e("FIN REGISTRATION", "onErrorResponse: ", error);
+                }
+            }
+        );
+
+        // Add the request to the RequestQueue.
+        queue.add(jsonRequest);
+    }
+
     private void setOTPInputStatus(TextInputLayout til, String s) {
         if (s.length() < OTP_CODE_LENGTH) {
             til.setError("OTP code is too short");
@@ -125,56 +187,6 @@ public class EnterOTPFragment extends Fragment {
             til.setError("OTP code is too long");
         } else {
             til.setError(null);
-            // TODO: Make API Call to Verify
-            // TODO: Save token/secret if verification is successful
-            // Instantiate the RequestQueue.
-            RequestQueue queue = Volley.newRequestQueue(getContext());
-            String root ="https://ec2-54-241-2-134.us-west-1.compute.amazonaws.com:8080";
-            String route ="/users/finreg";
-            String url = root + route;
-            JSONObject jsonBody = new JSONObject();
-            try {
-                jsonBody.put("phone_number", phoneNumber);
-                jsonBody.put("shared_secret", sharedSecret);
-                jsonBody.put("one_time_pass", s);
-            } catch (Exception e) {
-                Log.d("FIN REGISTRATION", "JSON body put error");
-            }
-            // Request a string response from the provided URL.
-            String requestBody = jsonBody.toString();
-            JsonObjectRequest jsonRequest = new JsonObjectRequest(Request.Method.GET, url, jsonBody,
-                new Response.Listener<JSONObject>() {
-                    @Override
-                    public void onResponse(JSONObject response) {
-                        // Display the first 500 characters of the response string.
-                        try {
-                            String salt = response.getString("salt");
-                            sharedPreferences.edit()
-                                    .putString("SALT", salt)
-                                    .apply();
-                            sharedPreferences.edit()
-                                    .putString("SECRET", sharedSecret)
-                                    .apply();
-                        } catch (JSONException je) {
-                            Log.e("FIN REGISTRATION", "onResponse: ", je);
-                        }
-                        Toast.makeText(getContext(), "Response is: "+ response.toString().substring(0,500), Toast.LENGTH_SHORT).show();
-                    }
-                }, new Response.ErrorListener() {
-                    @Override
-                    public void onErrorResponse(VolleyError error) {
-                        // TODO: Move this to onResponse when API is ready, add toast back
-                        SMSContacts.setContactList(SMSContacts.populateSMSGroups(getContext()));
-
-                        Intent mainIntent = new Intent(getActivity(), MainActivity.class);
-                        startActivity(mainIntent);
-                        // Toast.makeText(getContext(), "Please try again later", Toast.LENGTH_SHORT).show();
-                    }
-                }
-            );
-
-            // Add the request to the RequestQueue.
-            queue.add(jsonRequest);
         }
     }
 

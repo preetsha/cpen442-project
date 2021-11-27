@@ -11,6 +11,7 @@
     <string name="did_not_receive">Did not receive OTP code or timed out? Click below to have a new one sent to you.</string>
     <string name="register">Register</string>
     <string name="resend">Resend Code</string>
+    <string name="verify">Verify</string>
     <string name="phone_number">Phone Number</string>
     <string name="otp_code_label">OTP Code</string>
     <string name="otp_code_sent">A one-time password (OTP) code has been sent to the number ending in %1$s. Please enter the code below to complete your registration</string>
