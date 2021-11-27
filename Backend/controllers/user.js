@@ -1,4 +1,5 @@
 const User = require("../models/user");
+const UserHelper = require("../helpers/user.js");
 const crypto = require("crypto");
 const AES = require("../plugins/aes");
 
@@ -6,7 +7,7 @@ module.exports = {
     // This is just an example, we do not want to keep this function in the final implementation
     getUser: async (req, res) => {
         try {
-            let myUser = await User.findOne({ uuid: req.body.uuid }).catch(() => null);
+            let myUser = await UserHelper.findUserWithUuid(req.body.uuid);
 
             if (myUser) {
                 res.status(200).send(myUser);
@@ -22,9 +23,8 @@ module.exports = {
     },
     initRegistration: async (req, res) => {
         const phoneNumber = req.body.phone_number;
-        const paddedPhone = ("0000000000000000" + phoneNumber).slice(-16); // Pad phone number to 16 chars for encryption
-        
-        console.log(paddedPhone);
+        const paddedPhone = ("0".repeat(16) + phoneNumber).slice(-16); // Pad phone number to 16 chars for encryption
+
         // Encrypt the phone number using the phone symmetric key
         const encryptedPhone = AES.encrypt(paddedPhone, process.env.PHONE_IV, process.env.KEY);
 
@@ -42,12 +42,10 @@ module.exports = {
             uuid = sha.digest("hex");
 
             // Check if the UUID is already in use
-            existingUser = await User.find({uuid: uuid}).catch(() => {
-                console.log(`UUID Collision! ${uuid} is already used!`);
-                return [];
-            });
+            let uuidUser = await UserHelper.findUserWithUuid(req.body.uuid)
+
         } // Pick a new salt until we get a unique UUID
-        while (existingUser.length > 0);
+        while (uuidUser);
 
         // Generate nonce
         // const oneTimePass = crypto.randomInt(0, 1000000) // 6 digit number
@@ -91,7 +89,7 @@ module.exports = {
         const encryptedPhone = AES.encrypt(paddedPhone, process.env.PHONE_IV, process.env.KEY);
         
         // Find user corresponding to the phone number
-        const user = await User.findOne({ phone: encryptedPhone }).catch(() => null);
+        const user = await findUserWithEncPhone(encryptedPhone);
 
         if (user) {
             // Confirm the code matches
@@ -186,7 +184,7 @@ module.exports = {
         const inPayload = req.body.payload;
         
         // Find the user using their UUID
-        const user = await User.findOne({ uuid: uuid }).catch(() => null);
+        const user = await UserHelper.findUserWithUuid(uuid);
 
         // Stop if we cannot match uuid with a user
         if (!user) {
