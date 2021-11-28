@@ -21,10 +21,10 @@ router.post('/test', auth.verifyMessage, (req, res) => {
 });
 
 // Endpoints to update user's list numbers marked as "trusted" or "spam"
-router.post('/trust', userController.markTrusted);
-router.post('/spam', userController.markSpam);
-router.post('/rmtrust', userController.removeTrusted);
-router.post('/rmspam', userController.removeSpam);
+router.put('/trust', userController.markTrusted);
+router.put('/spam', userController.markSpam);
+router.delete('/trust', userController.removeTrusted);
+router.delete('/spam', userController.removeSpam);
 /*
 router.post('/request ', userController.request);
 
