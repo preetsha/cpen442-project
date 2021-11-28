@@ -90,6 +90,7 @@ public class SMSContacts {
                     contact.setPriority(ContactDataModel.Level.REGULAR);// TODO: CALCULATE PRIORITY HERE using server or if known contact
                 }
 
+
                 contacts.add(contact);
                 seenThreads.add(threadId);
 
