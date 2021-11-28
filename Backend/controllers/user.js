@@ -27,13 +27,13 @@ const removeFromPhoneList = async (user, phone, list_type) => {
 
 // Update trust/spam with phone number accordingly
 const updatePhoneLists = async (req, res, command) => {
-    if (["trust", "spam", "rmtrust", "rmspam"].indexOf(command) == -1) {
-        
-    }
     // Use UUID to find the user
-    const uuid = req.body.uuid;
-    const phone = req.body.phone;
+    const uuid = String(req.body.uuid);
+    const phone = String(req.body.phone);
 
+    // Check phone is properly formatted (only digits, 10 characters)
+    if (!/^\d*$/.test(phone) || phone.length != 10) { res.status(400).send({}); return;}
+    
     // Check user exists
     const user = await UserHelper.findUserWithUuid(uuid);
     if (!user) { res.status(400).send({}); return; }
