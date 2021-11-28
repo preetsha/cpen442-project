@@ -3,6 +3,72 @@ const UserHelper = require("../helpers/user.js");
 const crypto = require("crypto");
 const AES = require("../plugins/aes");
 
+// Add phone number to trust/spam list
+const addToPhoneList = async (user, phone, list_type) => {
+    if (["trust", "spam"].indexOf(list_type) == -1) throw "Invalid List!";
+
+    const list = (list_type === "trust") ? user.trusted_numbers : user.spam_numbers;
+    if (!list.includes(phone)) {
+        list.push(phone);
+    }
+    await user.save();
+}
+// Remove phone number from trust/spam list
+const removeFromPhoneList = async (user, phone, list_type) => {
+    if (["trust", "spam"].indexOf(list_type) == -1) throw "Invalid List!";
+
+    const list = (list_type === "trust") ? user.trusted_numbers : user.spam_numbers;
+    const index = list.indexOf(phone);
+    if (index > -1) {
+        list.splice(index, 1);
+    }
+    await user.save();
+}
+
+// Update trust/spam with phone number accordingly
+const updatePhoneLists = async (req, res, command) => {
+    if (["trust", "spam", "rmtrust", "rmspam"].indexOf(command) == -1) {
+        
+    }
+    // Use UUID to find the user
+    const uuid = req.body.uuid;
+    const phone = req.body.phone;
+
+    // Check user exists
+    const user = await UserHelper.findUserWithUuid(uuid);
+    if (!user) { res.status(400).send({}); return; }
+
+    // Encrypt the phone #
+    const encryptedPhone = phone; // TODO encrypt
+
+    // Update lists
+    switch (command) {
+        case "trust": {
+            await removeFromPhoneList(user, encryptedPhone, "spam");
+            await addToPhoneList(user, encryptedPhone, "trust");
+            res.status(200).send({"message": `Marked ${phone} as trusted`});
+            break;
+        }
+        case "spam": {
+            await removeFromPhoneList(user, encryptedPhone, "trust");
+            await addToPhoneList(user, encryptedPhone, "spam");
+            res.status(200).send({"message": `Marked ${phone} as spam`});
+            break;
+        }
+        case "rmtrust": {
+            await removeFromPhoneList(user, encryptedPhone, "trust");
+            res.status(200).send({"message": `Removed ${phone} from trusted`});
+            break;
+        }
+        case "rmspam": {
+            await removeFromPhoneList(user, encryptedPhone, "spam");
+            res.status(200).send({"message": `Removed ${phone} from spam`});
+            break;
+        }
+        default: throw "Invalid command!";
+    }
+}
+
 module.exports = {
     // This is just an example, we do not want to keep this function in the final implementation
     getUser: async (req, res) => {
@@ -31,7 +97,7 @@ module.exports = {
         // Compute hash of uuid and salt, picking a salt that allows for no hash collisions
         let salt = crypto.randomInt(1000000000);
         let uuid = "";
-        
+        let uuidUser;
         // Compute hash of phone number and salt, which is used as the UUID
         do {
             // NOTE: The invariant is that all UUID's will be unique
@@ -42,8 +108,7 @@ module.exports = {
             uuid = sha.digest("hex");
 
             // Check if the UUID is already in use
-            let uuidUser = await UserHelper.findUserWithUuid(req.body.uuid)
-
+            uuidUser = await UserHelper.findUserWithUuid(req.body.uuid)
         } // Pick a new salt until we get a unique UUID
         while (uuidUser);
 
@@ -69,6 +134,9 @@ module.exports = {
             time_completed_verification: null,
             is_active_user: true,
             is_verified: false,
+            trusted_numbers: [],
+            spam_numbers: [],
+            
         }
         await User.create(newUser);
 
@@ -89,7 +157,7 @@ module.exports = {
         const encryptedPhone = AES.encrypt(paddedPhone, process.env.PHONE_IV, process.env.KEY);
         
         // Find user corresponding to the phone number
-        const user = await findUserWithEncPhone(encryptedPhone);
+        const user = await UserHelper.findUserWithEncPhone(encryptedPhone);
 
         if (user) {
             // Confirm the code matches
@@ -217,6 +285,17 @@ module.exports = {
 
         // Send response
         res.status(201).send({ "message": "Session key has been established"});
-    }
-    // Twilio body goes here
+    },
+    markTrusted: async (req, res) => {
+        updatePhoneLists(req, res, "trust");
+    },
+    markSpam: async (req, res) => {
+        updatePhoneLists(req, res, "spam");
+    },
+    removeTrusted: async (req, res) => {
+        updatePhoneLists(req, res, "rmtrust");
+    },
+    removeSpam: async (req, res) => {
+        updatePhoneLists(req, res, "rmspam");
+    },
 }

@@ -19,6 +19,12 @@ router.post('/test', auth.verifyMessage, (req, res) => {
     console.log("SUCCESS");
     res.status(200).send({"message": "success"});
 });
+
+// Endpoints to update user's list numbers marked as "trusted" or "spam"
+router.post('/trust', userController.markTrusted);
+router.post('/spam', userController.markSpam);
+router.post('/rmtrust', userController.removeTrusted);
+router.post('/rmspam', userController.removeSpam);
 /*
 router.post('/request ', userController.request);
 
