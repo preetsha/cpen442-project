@@ -2,6 +2,7 @@ const User = require("../models/user");
 const UserHelper = require("../helpers/user.js");
 const crypto = require("crypto");
 const AES = require("../plugins/aes");
+const { createUnverifiedUser } = require("../helpers/user.js");
 
 // Add phone number to trust/spam list
 const addToPhoneList = async (user, phone, list_type) => {
@@ -70,83 +71,44 @@ const updatePhoneLists = async (req, res, command) => {
 }
 
 module.exports = {
-    // This is just an example, we do not want to keep this function in the final implementation
-    getUser: async (req, res) => {
-        try {
-            let myUser = await UserHelper.findUserWithUuid(req.body.uuid);
-
-            if (myUser) {
-                res.status(200).send(myUser);
-            }
-            else {
-                res.status(404).send({ "message": "User does not exist" });
-            }
-        }
-        catch (err) {
-            console.log(err);
-            res.status(400).send({ "message": "Invalid parameters" });
-        }
+    temp: async (req, res) => {
+        res.send(await UserHelper.createNonUserNumber(req.body.phone))
     },
     initRegistration: async (req, res) => {
         const phoneNumber = req.body.phone_number;
         const paddedPhone = ("0".repeat(16) + phoneNumber).slice(-16); // Pad phone number to 16 chars for encryption
 
         // Encrypt the phone number using the phone symmetric key
-        const encryptedPhone = AES.encrypt(paddedPhone, process.env.PHONE_IV, process.env.KEY);
+        // const encryptedPhone = AES.encrypt(paddedPhone, process.env.PHONE_IV, process.env.KEY);
+        const encryptedPhone = phoneNumber;
 
-        // Compute hash of uuid and salt, picking a salt that allows for no hash collisions
-        let salt = crypto.randomInt(1000000000);
-        let uuid = "";
-        let uuidUser;
-        // Compute hash of phone number and salt, which is used as the UUID
-        do {
-            // NOTE: The invariant is that all UUID's will be unique
-            salt = (salt + 1) % 1000000000;
-            let sha = crypto.createHmac('sha256', String(salt));
-            
-            sha.update(phoneNumber);
-            uuid = sha.digest("hex");
-
-            // Check if the UUID is already in use
-            uuidUser = await UserHelper.findUserWithUuid(req.body.uuid)
-        } // Pick a new salt until we get a unique UUID
-        while (uuidUser);
-
-        // Generate nonce
-        // const oneTimePass = crypto.randomInt(0, 1000000) // 6 digit number
-        const oneTimePass = 101234 // 6 digit number
-        const oneTimePassString = oneTimePass.toString().padStart(6, "0");
-        
-        // TODO Send SMS message
-        console.log(`Call F(x) to send SMS message: ${oneTimePassString}`);
-        
-        // Create unverified user
-        const d = new Date();
-        let newUser = {
-            uuid: uuid, // hash of phone number + salt
-            phone: encryptedPhone,
-            salt: salt,
-            shared_secret: null,
-            session_key: null, 
-            session_key_last_established: null,
-            time_requested_verification: d.getTime(),
-            expected_nonce: oneTimePassString,
-            time_completed_verification: null,
-            is_active_user: true,
-            is_verified: false,
-            trusted_numbers: [],
-            spam_numbers: [],
-            
+        let myUser = await UserHelper.findUserWithEncPhone(encryptedPhone);
+        if (!myUser) {
+            myUser = await UserHelper.createUnverifiedUser(encryptedPhone);
         }
-        await User.create(newUser);
+        else if (myUser.account_status == "inactive") {
+            myUser = await UserHelper.convertNonUserToUnverified(encryptedPhone);
+        }
+        else if (myUser.account_status == "verified") {
+            myUser = await UserHelper.beginVerifyingAgain(encryptedPhone);
+        }
+        else { (myUser.account_status == "unverified")
+            // Do nothing?
+        }
 
-        res.status(201).send({ 
-            "message": `TODO Call function to send ${oneTimePassString} to ${phoneNumber}`,
+        if (!myUser) { res.status(400).send({}); return; }
+        // time requested, expected nonce, and retries are saved
+        const nonce = myUser.nonce_expected;
+        console.log(`TODO: Send ${nonce} to ${phoneNumber}`)
+
+        res.status(200).send({ 
+            "message": `TODO Call function to send ${nonce} to ${phoneNumber}`,
         });
     },
     finishRegistration: async (req, res) => {
         // Decrypt the message using the server's private key
         const unencryptedReq = req;
+        
         const oneTimePass = unencryptedReq.body.one_time_pass;
         const sharedSecret = unencryptedReq.body.shared_secret;
         const phoneNumber = unencryptedReq.body.phone_number;
@@ -154,40 +116,32 @@ module.exports = {
         // Encrypt the phone number using the phone symmetric key
         // Phone # padded to 16 characters
         const paddedPhone = ("0".repeat(16) + phoneNumber).slice(-16); 
-        const encryptedPhone = AES.encrypt(paddedPhone, process.env.PHONE_IV, process.env.KEY);
+        // const encryptedPhone = AES.encrypt(paddedPhone, process.env.PHONE_IV, process.env.KEY);
+        const encryptedPhone = phoneNumber;
         
-        // Find user corresponding to the phone number
-        const user = await UserHelper.findUserWithEncPhone(encryptedPhone);
+        // Attempt to very the user corresponding to the phone number
+        const user = await UserHelper.verifyUser(encryptedPhone, oneTimePass, sharedSecret);
 
-        if (user) {
-            // Confirm the code matches
-            if (user.expected_nonce != oneTimePass) {
-                console.log("Nonce value mismatch!");
-                res.status(401).send({});
-                return;
-            }
-            // Extracting and saving the shared secret
-            user.shared_secret = sharedSecret;
-
-            // Update verif complete time, set verified, set is_active_user
-            d = new Date();
-            user.is_verified = true;
-            user.time_completed_verification = d.getTime();
-            await user.save();
-
-            const unencryptedResponse = { 
-                phone: phoneNumber, 
-                salt: user.salt,
-            }
-
-            // Encrypt and send the response object
-            const paddedSharedSecret = (sharedSecret + "0".repeat(32)).slice(0, 32);
-            const encryptedResponse = AES.encrypt(JSON.stringify(unencryptedResponse), process.env.REGISTRATION_IV, paddedSharedSecret);
-            res.status(201).send(unencryptedResponse); // TODO Send back encryptedResponse
+        if (user === "ABORT") {
+            res.status(400).send({"message": "Too many incorrect attempts."});
+            return;
         }
-        else {
-            res.status(404).send({});
+        if (!user) {
+            res.status(400).send({});
+            return;
         }
+
+        const unencryptedResponse = { 
+            phone: phoneNumber, 
+            salt: user.salt,
+        }
+
+        // Encrypt and send the response object
+        // const paddedSharedSecret = (sharedSecret + "0".repeat(32)).slice(0, 32);
+        // const encryptedResponse = AES.encrypt(JSON.stringify(unencryptedResponse), process.env.REGISTRATION_IV, paddedSharedSecret);
+        const encryptedResponse = unencryptedResponse;
+
+        res.status(201).send(encryptedResponse);
     },
     initGetSessionKey: async (req, res) => {
         const uuid = req.body.uuid;

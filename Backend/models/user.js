@@ -3,17 +3,19 @@ const { Schema } = mongoose;
 
 const userSchema = new Schema({
     uuid: String,
+    account_status: String, // verified, unverified, inactive
     phone: String,
     salt: Number,
     shared_secret: String,
+    
     session_key: String,
-    session_key_last_established: Date, 
-    expected_nonce: Number,
+    session_key_last_established: Date,
+
     time_requested_verification: Date,
-    time_completed_verification: Date,
-    expected_nonce: String,
-    is_active_user: Boolean, // False if this is a non-user number someone trusts
-    is_verified: Boolean,
+    nonce_expected: String,
+    nonce_attempts_left: Number,
+
+    // time_completed_verification: Date,
     trusted_numbers: [ String ],
     spam_numbers: [ String ]
 });
