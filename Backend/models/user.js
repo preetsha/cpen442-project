@@ -14,7 +14,8 @@ const userSchema = new Schema({
     expected_nonce: String,
     is_active_user: Boolean, // False if this is a non-user number someone trusts
     is_verified: Boolean,
-    users_trusted: [ String ],
+    trusted_numbers: [ String ],
+    spam_numbers: [ String ]
 });
 
 const User = mongoose.model("users", userSchema);
