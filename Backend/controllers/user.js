@@ -45,12 +45,14 @@ const updatePhoneLists = async (req, res, command) => {
     // Update lists
     switch (command) {
         case "trust": {
+            await UserHelper.createNonUserNumber(encryptedPhone);
             await removeFromPhoneList(user, encryptedPhone, "spam");
             await addToPhoneList(user, encryptedPhone, "trust");
             res.status(200).send({"message": `Marked ${phone} as trusted`});
             break;
         }
         case "spam": {
+            await UserHelper.createNonUserNumber(encryptedPhone);
             await removeFromPhoneList(user, encryptedPhone, "trust");
             await addToPhoneList(user, encryptedPhone, "spam");
             res.status(200).send({"message": `Marked ${phone} as spam`});
@@ -70,7 +72,126 @@ const updatePhoneLists = async (req, res, command) => {
     }
 }
 
+// Get a list of OTHER users that trust the ORIGINAL user
+const getBidirectionalTrusts = async (originalUser, cachedUsers) => {
+    // For each number on the user's trusted list
+    const userNumber = originalUser.phone;
+    const bidirectionalTrust = []
+
+    for (const trustedNumber of originalUser.trusted_numbers) {
+        // Get that user obj
+        const trustedUser = await getUserWithNumberCached(trustedNumber, cachedUsers);
+        
+        if (trustedUser.account_status == "verified" && trustedUser.trusted_numbers.includes(userNumber)) {
+            bidirectionalTrust.push(trustedUser.phone);
+        }
+    }
+    return bidirectionalTrust;
+}
+
+const getUserWithNumberCached = async (phoneNumber, cachedUsers) => {
+    // Attempt to retrive user from cache
+    if (phoneNumber in cachedUsers) {
+        return cachedUsers[phoneNumber];
+    }
+    // Add user to cache
+    const user = await UserHelper.findUserWithEncPhone(phoneNumber);
+    cachedUsers[phoneNumber] = user;
+
+    return user;
+}
+
+
+const calculateTrustScore = async (userMainNumber, userOtherNumber, numLayers, cachedUsers, initialUser) => {
+
+    /*
+    Calculates the trust score for all the users in the trusted/spam list with relation to userOther
+    and calls recursive call with num_layers - 1
+
+    // TODO, cache user objects {number:obj}
+    */
+    const thisUser = await getUserWithNumberCached(userMainNumber, cachedUsers);
+    let trustScore = 0
+    let multiplier = 1;
+    if(numLayers == 3) {
+        multiplier = 3;
+    } else if (numLayers == 2) {
+        multiplier = 2;
+    }
+
+    /*
+        if (response == "TRUSTED") {
+            then priority
+        } else if (response < 0) {
+            then spam
+        } else {
+            regular
+        }
+    */
+
+    if (thisUser.trusted_numbers.includes(userOtherNumber)) trustScore += 1 * multiplier; //* f(userMain);
+    else if (thisUser.spam_numbers.includes(userOtherNumber)) trustScore -= 2 * multiplier; //* f(userMain);
+
+    if (numLayers > 1) {
+        
+        
+        // Get list of trusted users that also trust the mainUser
+        // For each bidirectionally trusted user
+        let biTrustList = await getBidirectionalTrusts(thisUser, cachedUsers); // Note: Pass in user object
+
+        for (const t_number of biTrustList) {
+            if (t_number != userOtherNumber && t_number != initialUser) {
+                trustScore += await calculateTrustScore(t_number, userOtherNumber, numLayers-1, cachedUsers, initialUser)
+            }
+        }
+        return trustScore;  
+    } else {
+        return 1 * trustScore; // 1 is the multiplier for 3rd tier
+    }
+}
+
+
+/*
+    Main call:
+    calculateTrustScore(userMain, userOther, 3);
+*/
+
 module.exports = {
+    getTrustScore: async (req, res) => {
+        const thisUser = await UserHelper.findUserWithUuid(req.body.uuid);
+        if (!thisUser) {
+            console.log("User matching uuid does not exist");
+            res.status(400).send({});
+            return;
+        }
+        // Validate phone input
+        const otherPersonPhone = req.body.phone;
+        if (!/^\d*$/.test(otherPersonPhone) || otherPersonPhone.length != 10) { res.status(400).send({}); return;}
+
+        const encryptedOtherPersonPhone = otherPersonPhone; // Todo encrypt
+
+        if (thisUser.trusted_numbers.includes(encryptedOtherPersonPhone)) {
+            res.status(200).send({ "score": 0, "message": "TRUSTED" });
+            return;
+        }
+        else if (thisUser.spam_numbers.includes(encryptedOtherPersonPhone)) {
+            res.status(200).send({ "score": -1, "message": "SPAM" });
+            return;
+        }
+
+        const otherUser = await UserHelper.findUserWithEncPhone(encryptedOtherPersonPhone);
+        if (!otherUser) {
+            otherUser = await UserHelper.createNonUserNumber(encryptedOtherPersonPhone);
+            res.status(200).send({ "score": 0 });
+            return;
+        }
+
+        const thisUserPhone = thisUser.phone;
+        const cachedUsers = { "thisUserPhone": thisUser } // Create dictionary to cache the users
+        const trustScore = await calculateTrustScore(thisUserPhone, encryptedOtherPersonPhone, 3, cachedUsers, thisUserPhone)
+        
+        res.status(200).send({ "score": trustScore });
+    },
     temp: async (req, res) => {
         res.send(await UserHelper.createNonUserNumber(req.body.phone))
     },

@@ -23,6 +23,8 @@ router.put('/trust', userController.markTrusted);
 router.put('/spam', userController.markSpam);
 router.delete('/trust', userController.removeTrusted);
 router.delete('/spam', userController.removeSpam);
+
+router.get('/trust', userController.getTrustScore);
 /*
 router.post('/request ', userController.request);
 
