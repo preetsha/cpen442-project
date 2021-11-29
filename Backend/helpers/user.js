@@ -2,8 +2,8 @@ const User = require("../models/user");
 const crypto = require("crypto")
 
 const createNonceString = () => {
-    // const oneTimePass = crypto.randomInt(0, 1000000) // 6 digit number
-    const oneTimePass = 101234 // 6 digit number
+    const oneTimePass = crypto.randomInt(0, 1000000) // 6 digit number
+    // const oneTimePass = 101234 // 6 digit number
     return oneTimePass.toString().padStart(6, "0");
 };
 

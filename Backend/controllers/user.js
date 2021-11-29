@@ -2,6 +2,7 @@ const User = require("../models/user");
 const UserHelper = require("../helpers/user.js");
 const crypto = require("crypto");
 const AES = require("../plugins/aes");
+const TwilioHelper = require("../plugins/sms");
 const { createUnverifiedUser } = require("../helpers/user.js");
 
 // Add phone number to trust/spam list
@@ -103,7 +104,6 @@ const getUserWithNumberCached = async (phoneNumber, cachedUsers) => {
 
 
 const calculateTrustScore = async (userMainNumber, userOtherNumber, numLayers, cachedUsers, initialUser) => {
-
     /*
     Calculates the trust score for all the users in the trusted/spam list with relation to userOther
     and calls recursive call with num_layers - 1
@@ -119,22 +119,10 @@ const calculateTrustScore = async (userMainNumber, userOtherNumber, numLayers, c
         multiplier = 2;
     }
 
-    /*
-        if (response == "TRUSTED") {
-            then priority
-        } else if (response < 0) {
-            then spam
-        } else {
-            regular
-        }
-    */
-
     if (thisUser.trusted_numbers.includes(userOtherNumber)) trustScore += 1 * multiplier; //* f(userMain);
     else if (thisUser.spam_numbers.includes(userOtherNumber)) trustScore -= 2 * multiplier; //* f(userMain);
 
     if (numLayers > 1) {
-        
-        
         // Get list of trusted users that also trust the mainUser
         // For each bidirectionally trusted user
         let biTrustList = await getBidirectionalTrusts(thisUser, cachedUsers); // Note: Pass in user object
@@ -220,10 +208,10 @@ module.exports = {
         if (!myUser) { res.status(400).send({}); return; }
         // time requested, expected nonce, and retries are saved
         const nonce = myUser.nonce_expected;
-        console.log(`TODO: Send ${nonce} to ${phoneNumber}`)
+        TwilioHelper.sendSMS(phoneNumber, `Your TrustSMS verification code is: \n${nonce}`)
 
         res.status(200).send({ 
-            "message": `TODO Call function to send ${nonce} to ${phoneNumber}`,
+            "message": `Send one-time-pass to phone.`,
         });
     },
     finishRegistration: async (req, res) => {
