@@ -16,13 +16,9 @@ import androidx.fragment.app.Fragment;
 import androidx.navigation.fragment.NavHostFragment;
 
 import com.android.volley.Request;
-import com.android.volley.RequestQueue;
 import com.android.volley.Response;
 import com.android.volley.VolleyError;
 import com.android.volley.toolbox.JsonObjectRequest;
-import com.android.volley.toolbox.JsonRequest;
-import com.android.volley.toolbox.StringRequest;
-import com.android.volley.toolbox.Volley;
 import com.example.myapplication.databinding.FragmentRegistrationBinding;
 import com.google.android.material.textfield.TextInputLayout;
 
@@ -74,13 +70,16 @@ public class RegistrationFragment extends Fragment {
         binding.buttonFirst.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
+                if (!SMSContacts.isInternetAvailable()) {
+                    Toast.makeText(getContext(), "Please try again when you are connected to the internet.", Toast.LENGTH_SHORT).show();
+                    return;
+                }
+
                 if (phoneNumber.length() == PHONE_NUMBER_LENGTH && isValidPhoneNumber(phoneNumber)) {
-                    // TODO: Make Call to API to Register
                     // Display Error Dialog if Server is Unavailable
                     // Instantiate the RequestQueue.
-                    RequestQueue queue = Volley.newRequestQueue(getContext());
-                    String root ="http://ec2-54-241-2-134.us-west-1.compute.amazonaws.com:8080";
-                    String route ="/user/initreg";
+                    String root = "http://ec2-54-241-2-134.us-west-1.compute.amazonaws.com:8080";
+                    String route = "/user/initreg";
                     String url = root + route;
                     JSONObject jsonBody = new JSONObject();
                     try {
@@ -94,25 +93,22 @@ public class RegistrationFragment extends Fragment {
                         new Response.Listener<JSONObject>() {
                             @Override
                             public void onResponse(JSONObject response) {
-                                // Display the first 500 characters of the response string.
-                                Toast.makeText(getContext(), "Response is: "+ response.toString(), Toast.LENGTH_SHORT).show();
                             }
                         }, new Response.ErrorListener() {
                             @Override
                             public void onErrorResponse(VolleyError error) {
                                 Log.e("INIT REGISTRATION", "onErrorResponse: ", error);
-                                Toast.makeText(getContext(), "That didn't work!", Toast.LENGTH_SHORT).show();
+                                Toast.makeText(getContext(), "That didn't work", Toast.LENGTH_SHORT).show();
                             }
                         }
                     );
 
                     // Add the request to the RequestQueue.
-                    queue.add(jsonRequest);
+                    QueueSingleton.getInstance(getActivity().getApplicationContext()).addToRequestQueue(jsonRequest);
 
                     savePhoneNumber(phoneNumber);
                     NavHostFragment.findNavController(RegistrationFragment.this)
                             .navigate(R.id.action_RegistrationFragment_to_EnterOTPFragment);
-                    Toast.makeText(getContext() , phoneNumber, Toast.LENGTH_SHORT).show();
                 }
             }
         });
@@ -137,10 +133,7 @@ public class RegistrationFragment extends Fragment {
     }
 
     private boolean isValidPhoneNumber(String s) {
-        if (s.matches(".*\\D")) {
-            return false;
-        }
-        return true;
+        return !s.matches(".*\\D");
     }
 
     private void savePhoneNumber(String phoneNumber) {

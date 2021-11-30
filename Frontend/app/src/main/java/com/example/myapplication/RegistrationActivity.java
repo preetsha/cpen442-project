@@ -1,17 +1,11 @@
 package com.example.myapplication;
 
-import android.Manifest;
 import android.content.Context;
 import android.content.SharedPreferences;
-import android.content.pm.PackageManager;
 import android.os.Bundle;
-
-import androidx.appcompat.app.AppCompatActivity;
-
 import android.util.Log;
 
-import androidx.core.app.ActivityCompat;
-import androidx.core.content.ContextCompat;
+import androidx.appcompat.app.AppCompatActivity;
 import androidx.navigation.NavController;
 import androidx.navigation.Navigation;
 import androidx.navigation.ui.AppBarConfiguration;
@@ -28,7 +22,7 @@ public class RegistrationActivity extends AppCompatActivity {
     private AppBarConfiguration appBarConfiguration;
     private ActivityRegistrationBinding binding;
 
-    private String preferencesName = "SharedPreferences";
+    private final String preferencesName = "SharedPreferences";
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -46,18 +40,6 @@ public class RegistrationActivity extends AppCompatActivity {
     @Override
     protected void onResume() {
         super.onResume();
-
-        // TODO: move this permission check to inside the main flow of the app after registration
-        //       and authentication since it is kind of sketch to ask for it before a user has
-        //       registered and agreed to some form of a terms of service
-        int permissionCheckReadSms = ContextCompat.checkSelfPermission(this, Manifest.permission.READ_SMS);
-        int permissionCheckReadContacts = ContextCompat.checkSelfPermission(this, Manifest.permission.READ_CONTACTS);
-
-        if (permissionCheckReadSms == PackageManager.PERMISSION_GRANTED && permissionCheckReadContacts == PackageManager.PERMISSION_GRANTED) {
-
-        } else {
-            ActivityCompat.requestPermissions(this, new String[]{Manifest.permission.READ_SMS, Manifest.permission.READ_CONTACTS}, 100);
-        }
     }
 
     @Override

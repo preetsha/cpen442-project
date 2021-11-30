@@ -181,6 +181,7 @@ public class ChatActivity extends AppCompatActivity {
             c.setPriority(ContactDataModel.Level.PRIORITY);
             priority = 1;
             SMSContacts.contactList.set(idx, c);
+            SMSContacts.markAsTrusted(c.getNumber(), getApplicationContext());
             onBackPressed();
             return true;
         } else if (id == R.id.mark_spam_action) {
@@ -189,6 +190,7 @@ public class ChatActivity extends AppCompatActivity {
             c.setPriority(ContactDataModel.Level.SPAM);
             priority = -1;
             SMSContacts.contactList.set(idx, c);
+            SMSContacts.markAsSpam(c.getNumber(), getApplicationContext());
             onBackPressed();
             return true;
         }

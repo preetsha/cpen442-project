@@ -4,6 +4,7 @@ import android.app.PendingIntent;
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
+import android.content.SharedPreferences;
 import android.os.Bundle;
 import android.os.SystemClock;
 import android.telephony.SmsManager;
@@ -32,24 +33,35 @@ public class SmsReceiver extends BroadcastReceiver {
 
                 final Object[] pdusObj = (Object[]) bundle.get("pdus");
 
+                SharedPreferences pref = context.getSharedPreferences("SharedPreferences", Context.MODE_PRIVATE);
+                if (pref.getString("UUID", "").isEmpty() || pref.getString("SECRET", "").isEmpty()) {
+                    return;
+                }
+
                 for (int i = 0; i < pdusObj.length; i++) {
 
                     SmsMessage currentMessage = SmsMessage.createFromPdu((byte[]) pdusObj[i]);
-                    String phoneNumber = currentMessage.getDisplayOriginatingAddress();
+                    String phoneNumber = currentMessage.getOriginatingAddress();
+                    String displayName = SMSContacts.getContactbyPhoneNumber(context, phoneNumber);
+
+                    if (displayName.isEmpty()) {
+                        displayName = phoneNumber;
+                    }
 
                     String senderNum = phoneNumber;
                     String message = currentMessage.getDisplayMessageBody();
 
                     Log.i("SmsReceiver", "senderNum: " + senderNum + "; message: " + message);
 
+
                     // Create an explicit intent for an Activity in your app
-                    Intent chatIntent = new Intent(context.getApplicationContext(), MainActivity.class);
+                    Intent splashIntent = new Intent(context.getApplicationContext(), SplashActivity.class);
                     intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
-                    PendingIntent pendingIntent = PendingIntent.getActivity(context.getApplicationContext(), 0, chatIntent, 0);
+                    PendingIntent pendingIntent = PendingIntent.getActivity(context.getApplicationContext(), 0, splashIntent, 0);
 
                     NotificationCompat.Builder builder = new NotificationCompat.Builder(context.getApplicationContext(), NOTIFICATION_CHANNEL_ID)
                             .setSmallIcon(R.mipmap.ic_launcher)
-                            .setContentTitle(phoneNumber)
+                            .setContentTitle(displayName)
                             .setContentText(message)
                             .setPriority(NotificationCompat.PRIORITY_DEFAULT)
                             // Set the intent that will fire when the user taps the notification
@@ -57,8 +69,6 @@ public class SmsReceiver extends BroadcastReceiver {
                             .setAutoCancel(true);
 
                     NotificationManagerCompat notificationManager = NotificationManagerCompat.from(context.getApplicationContext());
-
-                    //TODO: send to correct inbox
 
                     // notificationId is a unique int for each notification that you must define
                     notificationManager.notify((int) SystemClock.uptimeMillis(), builder.build());

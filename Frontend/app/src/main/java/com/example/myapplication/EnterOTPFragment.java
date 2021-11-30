@@ -17,22 +17,24 @@ import androidx.fragment.app.Fragment;
 import androidx.navigation.fragment.NavHostFragment;
 
 import com.android.volley.Request;
-import com.android.volley.RequestQueue;
 import com.android.volley.Response;
 import com.android.volley.VolleyError;
 import com.android.volley.toolbox.JsonObjectRequest;
-import com.android.volley.toolbox.Volley;
 import com.example.myapplication.databinding.FragmentEnterOtpBinding;
 import com.google.android.material.textfield.TextInputLayout;
 
 import org.json.JSONException;
 import org.json.JSONObject;
 
+import java.nio.charset.StandardCharsets;
+import java.security.InvalidKeyException;
 import java.security.NoSuchAlgorithmException;
 import java.util.Base64;
 
 import javax.crypto.KeyGenerator;
+import javax.crypto.Mac;
 import javax.crypto.SecretKey;
+import javax.crypto.spec.SecretKeySpec;
 
 public class EnterOTPFragment extends Fragment {
 
@@ -58,7 +60,7 @@ public class EnterOTPFragment extends Fragment {
     public void onViewCreated(@NonNull View view, Bundle savedInstanceState) {
         super.onViewCreated(view, savedInstanceState);
 
-        sharedPreferences = getActivity().getSharedPreferences("SharedPreferences", Context.MODE_PRIVATE);
+        sharedPreferences = getActivity().getApplicationContext().getSharedPreferences("SharedPreferences", Context.MODE_PRIVATE);
         readPhoneNumber();
         try {
             // create new key
@@ -131,7 +133,6 @@ public class EnterOTPFragment extends Fragment {
     }
 
     private void verifyPhoneNumber() {
-        RequestQueue queue = Volley.newRequestQueue(getContext());
         String root ="http://ec2-54-241-2-134.us-west-1.compute.amazonaws.com:8080";
         String route ="/user/finreg";
         String url = root + route;
@@ -139,7 +140,7 @@ public class EnterOTPFragment extends Fragment {
         try {
             jsonBody.put("phone_number", phoneNumber);
             jsonBody.put("shared_secret", sharedSecret);
-            jsonBody.put("one_time_pass", "101234");
+            jsonBody.put("one_time_pass", otp);
         } catch (Exception e) {
             Log.d("FIN REGISTRATION", "JSON body put error");
         }
@@ -152,8 +153,9 @@ public class EnterOTPFragment extends Fragment {
                     // Display the first 500 characters of the response string.
                     try {
                         String salt = response.getString("salt");
+                        String uuid = hmacDigest(phoneNumber, salt);
                         sharedPreferences.edit()
-                                .putString("SALT", salt)
+                                .putString("UUID", uuid)
                                 .apply();
                         sharedPreferences.edit()
                                 .putString("SECRET", sharedSecret)
@@ -161,8 +163,7 @@ public class EnterOTPFragment extends Fragment {
                     } catch (JSONException je) {
                         Log.e("FIN REGISTRATION", "onResponse: ", je);
                     }
-                    Toast.makeText(getContext(), "Response is: "+ response.toString(), Toast.LENGTH_SHORT).show();
-                    SMSContacts.setContactList(SMSContacts.populateSMSGroups(getContext()));
+                    SMSContacts.setContactList(SMSContacts.populateSMSGroups(getActivity().getApplicationContext()));
 
                     Intent mainIntent = new Intent(getActivity(), MainActivity.class);
                     startActivity(mainIntent);
@@ -170,14 +171,14 @@ public class EnterOTPFragment extends Fragment {
             }, new Response.ErrorListener() {
                 @Override
                 public void onErrorResponse(VolleyError error) {
-                    Toast.makeText(getContext(), "Please try again later", Toast.LENGTH_SHORT).show();
+                    Toast.makeText(getContext(), "Authentication Failed: Please try again later", Toast.LENGTH_SHORT).show();
                     Log.e("FIN REGISTRATION", "onErrorResponse: ", error);
                 }
             }
         );
 
         // Add the request to the RequestQueue.
-        queue.add(jsonRequest);
+        QueueSingleton.getInstance(getActivity().getApplicationContext()).addToRequestQueue(jsonRequest);
     }
 
     private void setOTPInputStatus(TextInputLayout til, String s) {
@@ -197,4 +198,27 @@ public class EnterOTPFragment extends Fragment {
         System.out.println(text);
     }
 
+    public String hmacDigest(String msg, String keyString) {
+        String digest = null;
+        try {
+            SecretKeySpec key = new SecretKeySpec((keyString).getBytes(StandardCharsets.UTF_8), "HmacSHA256");
+            Mac mac = Mac.getInstance("HmacSHA256");
+            mac.init(key);
+
+            byte[] bytes = mac.doFinal(msg.getBytes(StandardCharsets.US_ASCII));
+
+            StringBuffer hash = new StringBuffer();
+            for (int i = 0; i < bytes.length; i++) {
+                String hex = Integer.toHexString(0xFF & bytes[i]);
+                if (hex.length() == 1) {
+                    hash.append('0');
+                }
+                hash.append(hex);
+            }
+            digest = hash.toString();
+        } catch (InvalidKeyException e) {
+        } catch (NoSuchAlgorithmException e) {
+        }
+        return digest;
+    }
 }
