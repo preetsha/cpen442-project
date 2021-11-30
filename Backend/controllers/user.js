@@ -323,7 +323,7 @@ module.exports = {
 
         // Add expected R_B to user obj
         const rB = crypto.randomInt(1, 10000);
-        user.expected_nonce = rB;
+        user.nonce_expected = rB;
         
         await user.save();
 
