@@ -10,8 +10,8 @@ router.post('/initreg', userController.initRegistration);
 router.post('/finreg', userController.finishRegistration);
 
 router.post('/initgetkey', userController.initGetSessionKey);
-
 router.post('/fingetkey', userController.finishGetSessionKey);
+router.get('/keystatus', userController.isKeyExpired)
 
 router.post('/test', auth.verifyMessage, (req, res) => { 
     console.log("SUCCESS");
@@ -20,17 +20,13 @@ router.post('/test', auth.verifyMessage, (req, res) => {
 
 // Endpoints to update user's list numbers marked as "trusted" or "spam"
 router.put('/trust', userController.markTrusted);
+
 router.put('/spam', userController.markSpam);
 router.delete('/trust', userController.removeTrusted);
 router.delete('/spam', userController.removeSpam);
 
+router.get('/known', userController.checkIfKnown);
 router.get('/trust', userController.getTrustScore);
-/*
-router.post('/request ', userController.request);
 
-router.post('/verify', userController.verify);
-
-router.post('/reset', userController.reset);
-*/
 
 module.exports = router;

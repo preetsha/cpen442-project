@@ -10,9 +10,7 @@ app.use(bodyParser.urlencoded({ extended: true }));
 require("./database/mongodb");
 
 // Import routes
-const debugRouter = require("./routes/debug");
 const userRouter = require("./routes/user");
-app.use("/debug", debugRouter);
 app.use("/user", userRouter);
 
 // Listen on PORT

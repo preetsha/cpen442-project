@@ -145,6 +145,28 @@ const calculateTrustScore = async (userMainNumber, userOtherNumber, numLayers, c
 */
 
 module.exports = {
+    checkIfKnown: async (req, res) => {
+        // Validate phone input
+        const otherPersonPhone = req.body.phone;
+        if (!/^\d*$/.test(otherPersonPhone) || otherPersonPhone.length != 10) { res.status(400).send({}); return;}
+
+        const encryptedOtherPersonPhone = otherPersonPhone; // Todo encrypt
+        
+        const thisUser = await UserHelper.findUserWithUuid(req.body.uuid);
+        if (thisUser.trusted_numbers.includes(encryptedOtherPersonPhone)) {
+            res.status(200).send({"message": "TRUSTED" });
+            return;
+        }
+        else if (thisUser.spam_numbers.includes(encryptedOtherPersonPhone)) {
+            res.status(200).send({"message": "SPAM" });
+            return;
+        }
+        else {
+            res.status(200).send({"message": "UNKNOWN" });
+            return;
+        }
+    },
+
     getTrustScore: async (req, res) => {
         const thisUser = await UserHelper.findUserWithUuid(req.body.uuid);
         if (!thisUser) {
@@ -333,9 +355,9 @@ module.exports = {
             res.status(401).send({});
             return;
         }
-
+        
         // Check R_B
-        if (String(user.expected_nonce) != uInPayload.nonce) {
+        if (String(user.nonce_expected) != uInPayload.nonce) {
             console.log(`Nonce mismatch!`);
             res.status(401).send({});
             return;
@@ -348,6 +370,31 @@ module.exports = {
 
         // Send response
         res.status(201).send({ "message": "Session key has been established"});
+    },
+    isKeyExpired: async (req, res) => {
+        const uuid = req.body.uuid;
+        const inPayload = req.body.payload;
+        
+        // Find the user using their UUID
+        const user = await UserHelper.findUserWithUuid(uuid);
+
+        // Stop if we cannot match uuid with a user
+        if (!user) {
+            console.log(`No user matching UUID: ${uuid.slice(0, 32)}`);
+            res.status(404).send({});
+            return;
+        }
+        
+        d = new Date();
+        const lastEstablished = user.session_key_last_established;
+        const elapsed = d.getTime() - lastEstablished
+
+        if (!lastEstablished || elapsed > 900000) { // 15 mins
+            res.status(200).send({ "is_expired": true });
+        }
+        else {
+            res.status(200).send({ "is_expired": false });
+        }
     },
     markTrusted: async (req, res) => {
         updatePhoneLists(req, res, "trust");
