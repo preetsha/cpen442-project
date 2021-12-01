@@ -72,12 +72,6 @@ public class SplashActivity extends Activity {
         }
 
         SharedPreferences pref = getApplicationContext().getSharedPreferences("SharedPreferences", Context.MODE_PRIVATE);
-        pref.edit()
-                .putString("UUID", "1f3ddcaef9480140b6f7ac8630e4aa6d27e2c403728aa6e31f7c1771ceaa4efc")
-                .apply();
-        pref.edit()
-                .putString("SECRET", "sfa39ytnRrnzcVuxZoWBrQ==")
-                .apply();
         Intent registrationIntent = new Intent(SplashActivity.this, RegistrationActivity.class);
         if (SMSContacts.isInternetAvailable()) {
             if (pref.getString("UUID", "").isEmpty() || pref.getString("SECRET", "").isEmpty()) {
@@ -108,31 +102,17 @@ public class SplashActivity extends Activity {
         finish();
     }
 
-    private void generateSessionKey(SharedPreferences preferences, Context context) {
-        // TODO: Generate new session key
-        boolean isKeyEstablished = initGetSessionKey(preferences, context);
-        if (isKeyEstablished) {
-            SMSContacts.setContactList(SMSContacts.populateSMSGroups(getApplicationContext()));
-            Intent mainIntent = new Intent(SplashActivity.this, MainActivity.class);
-            startActivity(mainIntent);
-        } else {
-            Log.e("generateSessionKey", "Could not establish session key");
-            Toast.makeText(
-                    context,
-                    "Failed to establish a session key, please try again later",
-                    Toast.LENGTH_LONG
-            ).show();
-        }
+    public void generateSessionKey(SharedPreferences preferences, Context context) {
+        initGetSessionKey(preferences, context);
     }
 
-    private boolean initGetSessionKey(SharedPreferences preferences, Context context) {
-        final boolean[] successful = {false};
+    private void initGetSessionKey(SharedPreferences preferences, Context context) {
 
         String root = "http://ec2-54-241-2-134.us-west-1.compute.amazonaws.com:8080";
         String route = "/user/initgetkey";
         String url = root + route;
         BigInteger g = new BigInteger("5");
-        BigInteger p = new BigInteger("23");;
+        BigInteger p = new BigInteger("23");
         int a = new Random(System.currentTimeMillis()).nextInt(p.intValue() - (2 * g.intValue())) + g.intValue();
         BigInteger a2 = new BigInteger(Integer.toString(a));
         String nonce = Integer.toString(new Random(System.currentTimeMillis()).nextInt());
@@ -162,7 +142,7 @@ public class SplashActivity extends Activity {
 
                         if (nonce.contentEquals(responseChallengeNonce)) {
                             // make next request and store session key
-                            successful[0] = finGetSessionKey(responseKeyhalf, a2, p, preferences, responseNonce, root, context) || successful[0];
+                            finGetSessionKey(responseKeyhalf, a2, p, preferences, responseNonce, root, context);
                         } else {
                             throw new Exception("Could not verify server identity");
                         }
@@ -185,18 +165,15 @@ public class SplashActivity extends Activity {
 
         // Add the request to the RequestQueue.
         QueueSingleton.getInstance(context).addToRequestQueue(jsonRequest);
-        return successful[0];
     }
 
-    private boolean finGetSessionKey(String responseKeyhalf, BigInteger a2, BigInteger p,
+    private void finGetSessionKey(String responseKeyhalf, BigInteger a2, BigInteger p,
                                   SharedPreferences preferences, String responseNonce, String rootUrl,
                                   Context context) {
         // make json body
         JSONObject jsonBody = new JSONObject();
         JSONObject payload = new JSONObject();
         String url = rootUrl + "/user/fingetkey";
-
-        final boolean[] successful = {false};
 
         try {
             payload.put("uuid", preferences.getString("UUID", ""));
@@ -213,7 +190,10 @@ public class SplashActivity extends Activity {
                         String sessionKeyInHex = gbmodp.modPow(a2, p).toString(16);
                         String paddedSessionKey = String.format("%2s", sessionKeyInHex).replace(' ', '0');
                         preferences.edit().putString("SESSION_KEY", paddedSessionKey).apply();
-                        successful[0] = true;
+
+                        SMSContacts.setContactList(SMSContacts.populateSMSGroups(context));
+                        Intent mainIntent = new Intent(SplashActivity.this, MainActivity.class);
+                        startActivity(mainIntent);
                     }
                 },
                 new Response.ErrorListener() {
@@ -233,7 +213,5 @@ public class SplashActivity extends Activity {
         } catch (Exception e) {
             Log.e("generateSessionKey - finGetSessionKey", "JSON body put error");
         }
-
-        return successful[0];
     }
 }
