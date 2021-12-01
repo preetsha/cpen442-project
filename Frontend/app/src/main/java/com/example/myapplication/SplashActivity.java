@@ -55,14 +55,14 @@ public class SplashActivity extends Activity {
                     permissionCheckSendSms != PackageManager.PERMISSION_GRANTED ||
                     permissionCheckReceiveSms != PackageManager.PERMISSION_GRANTED ||
                     permissionCheckInternet != PackageManager.PERMISSION_GRANTED) {
-                Toast.makeText(getApplicationContext(), "This App requires these permissions to run!", Toast.LENGTH_SHORT);
+                Toast.makeText(getApplicationContext(), "This App requires these permissions to run!", Toast.LENGTH_SHORT).show();
                 finish();
             }
         }
 
         SharedPreferences pref = this.getSharedPreferences("SharedPreferences", Context.MODE_PRIVATE);
         Intent registrationIntent = new Intent(SplashActivity.this, RegistrationActivity.class);
-        if (SMSContacts.isInternetAvailable()) {
+        if (SMSContacts.isInternetAvailable(this)) {
             if (pref.getString("UUID", "").isEmpty() || pref.getString("SECRET", "").isEmpty()) {
                 startActivity(registrationIntent);
             } else {

@@ -4,6 +4,8 @@ import android.content.ContentResolver;
 import android.content.Context;
 import android.content.SharedPreferences;
 import android.database.Cursor;
+import android.net.ConnectivityManager;
+import android.net.NetworkInfo;
 import android.net.Uri;
 import android.provider.ContactsContract;
 import android.provider.Telephony;
@@ -118,7 +120,7 @@ public class SMSContacts {
                     contact.setDisplayName(displayName);
                 }
 
-                if (isInternetAvailable()) {
+                if (isInternetAvailable(context)) {
                     if (!cachedValue.isEmpty()) { // In cache
                         String serverExpectedValue = "UNKNOWN"; // TODO: THOMAS (returns "TRUSTED", "SPAM", or "UNKNOWN")
                         if (!displayName.isEmpty()) { // If is contact
@@ -126,24 +128,14 @@ public class SMSContacts {
                                 markAsTrusted(address, context);
                             }
                             contact.setPriority(ContactDataModel.Level.PRIORITY);
-                        } else if (!serverExpectedValue.equals("UNKNOWN")) { // Number seen by server
+                        } else { // Non-contact number
                             if (!serverExpectedValue.equals(cachedValue)) {
                                 // Number's inbox has been changed offline
                                 if (cachedValue.equals("TRUSTED")) {
-                                    // TODO: can combine with case below if we make server automatically remove
-                                    // TODO: remove from spam, mark as trusted
                                     markAsTrusted(address, context);
                                 } else {
-                                    // TODO: remove from trusted, mark as spam
                                     markAsSpam(address, context);
                                 }
-                            }
-                            contact.setPriority(getLevelFromCachedValue(cachedValue)); // Inbox = cachedValue
-                        } else { //in cache, non-contact, not seen by server before
-                            if (cachedValue.equals("TRUSTED")) {
-                                markAsTrusted(address, context);
-                            } else if (cachedValue.equals("SPAM")) {
-                                markAsSpam(address, context);
                             }
                             contact.setPriority(getLevelFromCachedValue(cachedValue)); // Inbox = cachedValue
                         }
@@ -191,9 +183,10 @@ public class SMSContacts {
         return contacts;
     }
 
-    public static boolean isInternetAvailable() {
-        //TODO: implement this
-        return true;
+    public static boolean isInternetAvailable(Context context) {
+        ConnectivityManager cm = (ConnectivityManager) context.getSystemService(Context.CONNECTIVITY_SERVICE);
+        NetworkInfo activeNetworkInfo = cm.getActiveNetworkInfo();
+        return activeNetworkInfo != null && activeNetworkInfo.isConnectedOrConnecting();
     }
 
     private static String getCachedValue(SharedPreferences sharedPreferences, String number) {

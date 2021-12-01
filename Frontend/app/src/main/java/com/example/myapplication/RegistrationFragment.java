@@ -70,7 +70,7 @@ public class RegistrationFragment extends Fragment {
         binding.buttonFirst.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
-                if (!SMSContacts.isInternetAvailable()) {
+                if (!SMSContacts.isInternetAvailable(getContext())) {
                     Toast.makeText(getContext(), "Please try again when you are connected to the internet.", Toast.LENGTH_SHORT).show();
                     return;
                 }
