@@ -163,7 +163,7 @@ public class EnterOTPFragment extends Fragment {
                     } catch (JSONException je) {
                         Log.e("FIN REGISTRATION", "onResponse: ", je);
                     }
-                    SMSContacts.setContactList(SMSContacts.populateSMSGroups(getActivity().getApplicationContext()));
+                    SMSContacts.populateSMSGroups(getActivity().getApplicationContext());
 
                     Intent mainIntent = new Intent(getActivity(), MainActivity.class);
                     startActivity(mainIntent);

@@ -74,7 +74,7 @@ public class SplashActivity extends Activity {
             if (pref.getString("UUID", "").isEmpty() || pref.getString("SECRET", "").isEmpty()) {
                 startActivity(registrationIntent);
             } else {
-                SMSContacts.setContactList(SMSContacts.populateSMSGroups(getApplicationContext()));
+                SMSContacts.populateSMSGroups(getApplicationContext());
                 Intent mainIntent = new Intent(SplashActivity.this, MainActivity.class);
                 startActivity(mainIntent);
                 finish();
@@ -86,7 +86,7 @@ public class SplashActivity extends Activity {
 
     private void generateSessionKey() {
         // TODO: Generate new session key
-        SMSContacts.setContactList(SMSContacts.populateSMSGroups(getApplicationContext()));
+        SMSContacts.populateSMSGroups(getApplicationContext());
         Intent mainIntent = new Intent(SplashActivity.this, MainActivity.class);
         startActivity(mainIntent);
     }
