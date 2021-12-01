@@ -1,7 +1,6 @@
 package com.example.myapplication;
 
 import android.content.Context;
-import android.content.Intent;
 import android.content.SharedPreferences;
 import android.os.Bundle;
 import android.text.Editable;
@@ -163,10 +162,8 @@ public class EnterOTPFragment extends Fragment {
                     } catch (JSONException je) {
                         Log.e("FIN REGISTRATION", "onResponse: ", je);
                     }
-                    SMSContacts.populateSMSGroups(getActivity().getApplicationContext());
 
-                    Intent mainIntent = new Intent(getActivity(), MainActivity.class);
-                    startActivity(mainIntent);
+                    new SplashActivity().generateSessionKey(sharedPreferences, getActivity().getApplicationContext());
                 }
             }, new Response.ErrorListener() {
                 @Override
