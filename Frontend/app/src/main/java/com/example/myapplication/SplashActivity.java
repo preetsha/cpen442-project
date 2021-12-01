@@ -72,6 +72,12 @@ public class SplashActivity extends Activity {
         }
 
         SharedPreferences pref = getApplicationContext().getSharedPreferences("SharedPreferences", Context.MODE_PRIVATE);
+        pref.edit()
+                .putString("UUID", "1f3ddcaef9480140b6f7ac8630e4aa6d27e2c403728aa6e31f7c1771ceaa4efc")
+                .apply();
+        pref.edit()
+                .putString("SECRET", "sfa39ytnRrnzcVuxZoWBrQ==")
+                .apply();
         Intent registrationIntent = new Intent(SplashActivity.this, RegistrationActivity.class);
         if (SMSContacts.isInternetAvailable()) {
             if (pref.getString("UUID", "").isEmpty() || pref.getString("SECRET", "").isEmpty()) {
@@ -86,7 +92,7 @@ public class SplashActivity extends Activity {
                     generateSessionKey(); // update session key in cache
                  */
                 generateSessionKey(pref, getApplicationContext());
-                finish();
+//                finish();
             }
         } else {
             if (pref.getString("UUID", "").isEmpty() || pref.getString("SECRET", "").isEmpty()) {
@@ -123,14 +129,14 @@ public class SplashActivity extends Activity {
         final boolean[] successful = {false};
 
         String root = "http://ec2-54-241-2-134.us-west-1.compute.amazonaws.com:8080";
-        String route = "/user/trust";
+        String route = "/user/initgetkey";
         String url = root + route;
         BigInteger g = new BigInteger("5");
         BigInteger p = new BigInteger("23");;
         int a = new Random(System.currentTimeMillis()).nextInt(p.intValue() - (2 * g.intValue())) + g.intValue();
         BigInteger a2 = new BigInteger(Integer.toString(a));
         String nonce = Integer.toString(new Random(System.currentTimeMillis()).nextInt());
-        String keyhalf = g.modPow(a2, p).toString();
+        String keyhalf = String.format("%2s", g.modPow(a2, p).toString(16)).replace(' ', '0');
         JSONObject jsonBody = new JSONObject();
         JSONObject payload = new JSONObject();
         try {
@@ -149,14 +155,14 @@ public class SplashActivity extends Activity {
                 @Override
                 public void onResponse(JSONObject response) {
                     try {
-                        String responseNonce = response.getString("nonce");
-                        JSONObject responsePayload = response.getJSONObject("payload");
+                        String responseNonce = Integer.toString(response.getInt("nonce"));
+                        JSONObject responsePayload = new JSONObject(response.getString("payload"));
                         String responseChallengeNonce = responsePayload.getString("nonce");
                         String responseKeyhalf = responsePayload.getString("keyhalf");
 
                         if (nonce.contentEquals(responseChallengeNonce)) {
                             // make next request and store session key
-                            successful[0] = finGetSessionKey(responseKeyhalf, a2, p, preferences, responseNonce, url, context) || successful[0];
+                            successful[0] = finGetSessionKey(responseKeyhalf, a2, p, preferences, responseNonce, root, context) || successful[0];
                         } else {
                             throw new Exception("Could not verify server identity");
                         }
@@ -183,11 +189,12 @@ public class SplashActivity extends Activity {
     }
 
     private boolean finGetSessionKey(String responseKeyhalf, BigInteger a2, BigInteger p,
-                                  SharedPreferences preferences, String responseNonce, String url,
+                                  SharedPreferences preferences, String responseNonce, String rootUrl,
                                   Context context) {
         // make json body
         JSONObject jsonBody = new JSONObject();
         JSONObject payload = new JSONObject();
+        String url = rootUrl + "/user/fingetkey";
 
         final boolean[] successful = {false};
 
@@ -195,16 +202,17 @@ public class SplashActivity extends Activity {
             payload.put("uuid", preferences.getString("UUID", ""));
             payload.put("nonce", responseNonce);
             jsonBody.put("uuid", preferences.getString("UUID", ""));
-            jsonBody.put("payload", payload);
+            jsonBody.put("payload", payload.toString());
 
             JsonObjectRequest jsonRequestFin = new JsonObjectRequest(Request.Method.POST, url, jsonBody,
                 new Response.Listener<JSONObject>() {
                     @Override
                     public void onResponse(JSONObject response) {
                         // store session key
-                        BigInteger gbmodp = new BigInteger(responseKeyhalf);
-                        String sessionKey = gbmodp.modPow(a2, p).toString();
-                        preferences.edit().putString("SESSION_KEY", sessionKey).apply();
+                        BigInteger gbmodp = new BigInteger(responseKeyhalf, 16);
+                        String sessionKeyInHex = gbmodp.modPow(a2, p).toString(16);
+                        String paddedSessionKey = String.format("%2s", sessionKeyInHex).replace(' ', '0');
+                        preferences.edit().putString("SESSION_KEY", paddedSessionKey).apply();
                         successful[0] = true;
                     }
                 },
