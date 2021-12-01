@@ -306,16 +306,16 @@ module.exports = {
         const gaModP = uInPayload.keyhalf;
 
         const serverDiffie = crypto.createDiffieHellman(p, "hex", g, "hex");
-        const gbModP = serverDiffie.generateKeys();
+        const gbModP = serverDiffie.generateKeys("utf8");
 
         // Save the session key;
-        const sessionKey = serverDiffie.computeSecret(Buffer.from(gaModP, "hex"));
+        const sessionKey = serverDiffie.computeSecret(Buffer.from(gaModP, "utf8"));
         user.session_key = sessionKey.toString("hex");
 
         // Create and encrypt payload containing g^b mod p and R_A
         const uOutPayload = JSON.stringify({
             "nonce": rA,
-            "keyhalf": gbModP.toString("hex")
+            "keyhalf": gbModP.toString("utf8")
         });
         
         const outPayload = uOutPayload; // Remove this, uncomment below
