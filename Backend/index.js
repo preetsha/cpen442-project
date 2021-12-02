@@ -13,6 +13,9 @@ require("./database/mongodb");
 const userRouter = require("./routes/user");
 app.use("/user", userRouter);
 
+// Start services
+require("./services/msg_counter");
+
 // Listen on PORT
 const server = app.listen(process.env.PORT, function () {
     const host = server.address().address;

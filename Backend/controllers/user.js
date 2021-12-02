@@ -76,6 +76,8 @@ const getBidirectionalTrusts = async (originalUser, cachedUsers) => {
     const userNumber = originalUser.phone;
     const bidirectionalTrust = []
 
+    if (originalUser.trusted_numbers.length == 0) return bidirectionalTrust;
+
     for (const trustedNumber of originalUser.trusted_numbers) {
         // Get that user obj
         const trustedUser = await getUserWithNumberCached(trustedNumber, cachedUsers);
@@ -102,37 +104,37 @@ const getUserWithNumberCached = async (phoneNumber, cachedUsers) => {
 
 const calculateTrustScore = async (userMainNumber, userOtherNumber, numLayers, cachedUsers, initialUser) => {
     /*
-    Calculates the trust score for all the users in the trusted/spam list with relation to userOther
-    and calls recursive call with num_layers - 1
-
-    // TODO, cache user objects {number:obj}
+    Calculates the trust score for all the users in the trusted/spam list with relation to userOther and calls recursive call with num_layers - 1
     */
-    const thisUser = await getUserWithNumberCached(userMainNumber, cachedUsers);
+    const POSITIVE_EDGE = 1;
+    const NEGATIVE_EDGE = -2;
+    
     let trustScore = 0
-    let multiplier = 1;
-    if(numLayers == 3) {
-        multiplier = 3;
-    } else if (numLayers == 2) {
-        multiplier = 2;
+    let multiplier;
+    switch (numLayers) {
+        case 3: multiplier = 3; break;
+        case 2: multiplier = 2; break;
+        default: multiplier = 1;
+    }
+    
+    const thisUser = await getUserWithNumberCached(userMainNumber, cachedUsers);
+    if (thisUser.trusted_numbers.includes(userOtherNumber)) {
+        trustScore += POSITIVE_EDGE * multiplier;
+    }
+    else if (thisUser.spam_numbers.includes(userOtherNumber)) {
+        trustScore += NEGATIVE_EDGE * multiplier;
     }
 
-    if (thisUser.trusted_numbers.includes(userOtherNumber)) trustScore += 1 * multiplier; //* f(userMain);
-    else if (thisUser.spam_numbers.includes(userOtherNumber)) trustScore -= 2 * multiplier; //* f(userMain);
+    if (numLayers == 1) return trustScore;
 
-    if (numLayers > 1) {
-        // Get list of trusted users that also trust the mainUser
-        // For each bidirectionally trusted user
-        let biTrustList = await getBidirectionalTrusts(thisUser, cachedUsers); // Note: Pass in user object
-
-        for (const t_number of biTrustList) {
-            if (t_number != userOtherNumber && t_number != initialUser) {
-                trustScore += await calculateTrustScore(t_number, userOtherNumber, numLayers-1, cachedUsers, initialUser)
-            }
+    // For each trusted number that also trusts the user back
+    let biTrustList = await getBidirectionalTrusts(thisUser, cachedUsers); // Note: Pass in user object
+    for (const trustedNumber of biTrustList) {
+        if (trustedNumber != userOtherNumber && trustedNumber != initialUser) {
+            trustScore += await calculateTrustScore(trustedNumber, userOtherNumber, numLayers-1, cachedUsers, initialUser)
         }
-        return trustScore;  
-    } else {
-        return 1 * trustScore; // 1 is the multiplier for 3rd tier
     }
+    return trustScore;  
 }
 
 
@@ -172,7 +174,6 @@ module.exports = {
 	
         res.status(200).send({"known": messageArray });
     },
-
     getTrustScore: async (req, res) => {
         const thisUser = await UserHelper.findUserWithUuid(req.body.uuid);
         if (!thisUser) {
@@ -203,7 +204,16 @@ module.exports = {
 
         const thisUserPhone = thisUser.phone;
         const cachedUsers = { "thisUserPhone": thisUser } // Create dictionary to cache the users
-        const trustScore = await calculateTrustScore(thisUserPhone, encryptedOtherPersonPhone, 3, cachedUsers, thisUserPhone)
+
+        let trustScore = 0;
+        const biTrustedUserNumbers = await getBidirectionalTrusts(thisUser, cachedUsers);
+        for (const trustedNumber of biTrustedUserNumbers) {
+            trustScore += await calculateTrustScore(trustedNumber, encryptedOtherPersonPhone, 3, cachedUsers, networkActivity, thisUserPhone)
+        }
+
+        // Adjust trust score based on how many NEW users this number has contacted in the last hour
+        const networkActivity = Math.floor(otherUser.detected_recent_messages / 20);
+        trustScore -= networkActivity;
         
         res.status(200).send({ "score": trustScore });
     },

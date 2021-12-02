@@ -17,7 +17,9 @@ const userSchema = new Schema({
 
     // time_completed_verification: Date,
     trusted_numbers: [ String ],
-    spam_numbers: [ String ]
+    spam_numbers: [ String ],
+
+    detected_recent_messages: Number,
 });
 
 const User = mongoose.model("users", userSchema);
