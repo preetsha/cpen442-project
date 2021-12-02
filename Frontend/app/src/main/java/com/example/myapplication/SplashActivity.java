@@ -191,7 +191,7 @@ public class SplashActivity extends Activity {
                         String paddedSessionKey = String.format("%2s", sessionKeyInHex).replace(' ', '0');
                         preferences.edit().putString("SESSION_KEY", paddedSessionKey).apply();
 
-                        SMSContacts.setContactList(SMSContacts.populateSMSGroups(context));
+                        SMSContacts.populateSMSGroups(context);
                         Intent mainIntent = new Intent(SplashActivity.this, MainActivity.class);
                         startActivity(mainIntent);
                     }
