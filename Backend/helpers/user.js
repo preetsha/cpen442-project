@@ -42,7 +42,7 @@ const createNonUserNumber = async (encryptedPhone) => {
     // Create the user
     const newUser = {
         "phone": encryptedPhone,
-        "detected_messages_past_hour": 0,
+        "detected_recent_messages": 0,
         "account_status": "inactive"
     }
     return await User.create(newUser);
@@ -78,7 +78,7 @@ const createUnverifiedUser = async (encryptedPhone) => {
 
     const newUser = {
         "phone": encryptedPhone,
-        "detected_messages_past_hour": 0,
+        "detected_recent_messages": 0,
         "account_status": "unverified",
         "nonce_expected": createNonceString(),
         "nonce_attempts_left": 3,
