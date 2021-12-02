@@ -32,9 +32,6 @@ const updatePhoneLists = async (req, res, command) => {
     // Use UUID to find the user
     const uuid = String(req.body.uuid);
     const phone = String(req.body.phone);
-
-    // Check phone is properly formatted (only digits, 10 characters)
-    if (!/^\d*$/.test(phone)) { res.status(400).send({}); return;}
     
     // Check user exists
     const user = await UserHelper.findUserWithUuid(uuid);
@@ -148,7 +145,6 @@ module.exports = {
     checkIfKnown: async (req, res) => {
         // Validate phone input
         const otherPersonPhone = req.body.phone;
-        if (!/^\d*$/.test(otherPersonPhone)) { res.status(400).send({}); return;}
 
         const encryptedOtherPersonPhone = otherPersonPhone; // Todo encrypt
         
@@ -176,7 +172,6 @@ module.exports = {
         }
         // Validate phone input
         const otherPersonPhone = req.body.phone;
-        if (!/^\d*$/.test(otherPersonPhone)) { res.status(400).send({}); return;}
 
         const encryptedOtherPersonPhone = otherPersonPhone; // Todo encrypt
 
