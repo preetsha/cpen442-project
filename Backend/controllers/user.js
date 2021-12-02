@@ -145,17 +145,23 @@ module.exports = {
     checkIfKnown: async (req, res) => {
         // Validate phone input
 		
-        const otherPersonPhones = req.body.phones;
+        /*const otherPersonPhones = req.body.phones;
+		console.log(req);
+		console.log(req.body);
+		console.log(otherPersonPhones);
 		
 		messageArray = [];
 		
 		const thisUser = await UserHelper.findUserWithUuid(req.body.uuid);
 		
-		if (!Array.isArray(otherPersonPhones)) {
+		if (otherPersonPhones == undefined || !Array.isArray(otherPersonPhones)) {
 			res.status(400).send({});
 		}
 		
-		for (let otherPersonPhone of otherPersonPhones) {
+		console.log(Array.from(otherPersonPhones));
+		console.log(Array.from(otherPersonPhones).length);
+		
+		for (let otherPersonPhone of Array.from(otherPersonPhones)) {
 			const encryptedOtherPersonPhone = otherPersonPhone; // Todo encrypt
 			
 			if (thisUser.trusted_numbers.includes(encryptedOtherPersonPhone)) {
@@ -170,7 +176,25 @@ module.exports = {
 		}
 		
 	
-        res.status(200).send({"known": messageArray });
+        res.status(200).send({"known": messageArray });*/
+		
+		const otherPersonPhone = req.body.phone;
+
+        const encryptedOtherPersonPhone = otherPersonPhone; // Todo encrypt
+
+        const thisUser = await UserHelper.findUserWithUuid(req.body.uuid);
+        if (thisUser.trusted_numbers.includes(encryptedOtherPersonPhone)) {
+            res.status(200).send({"message": "TRUSTED" });
+            return;
+        }
+        else if (thisUser.spam_numbers.includes(encryptedOtherPersonPhone)) {
+            res.status(200).send({"message": "SPAM" });
+            return;
+        }
+        else {
+            res.status(200).send({"message": "UNKNOWN" });
+            return;
+        }
     },
 
     getTrustScore: async (req, res) => {
