@@ -88,13 +88,13 @@ public class SMSContacts {
         return -1;
     }
 
-    public static ArrayList<ContactDataModel> populateSMSGroups(Context context) {
+    public static void populateSMSGroups(Context context) {
         ContentResolver cr = context.getContentResolver();
 
         SharedPreferences preferences = context.getSharedPreferences("SharedPreferences", Context.MODE_PRIVATE);
         Cursor cur = cr.query(Uri.parse("content://sms"),
                 new String[]{"DISTINCT thread_id", "address", "person", "body", "date"}, "thread_id IS NOT NULL) GROUP BY (thread_id", null, Telephony.Sms.DEFAULT_SORT_ORDER);
-        ArrayList<ContactDataModel> contacts = new ArrayList<>();
+        contactList = new ArrayList<>();
         ArrayList<String> seenThreads = new ArrayList<>();
         Set<String> trustedList = new HashSet<>();
         Set<String> regularList = new HashSet<>();
@@ -119,6 +119,8 @@ public class SMSContacts {
                 if (!displayName.isEmpty()) {
                     contact.setDisplayName(displayName);
                 }
+
+                seenThreads.add(threadId);
 
                 if (isInternetAvailable(context)) {
                     if (!cachedValue.isEmpty()) { // In cache
@@ -152,7 +154,7 @@ public class SMSContacts {
                     }
                 }
 
-                contacts.add(contact);
+                contactList.add(contact);
                 seenThreads.add(threadId);
 
                 switch (contact.getPriority()) {
@@ -179,8 +181,6 @@ public class SMSContacts {
         preferences.edit().putStringSet(cacheTrustedKey, trustedList).apply();
         preferences.edit().putStringSet(cacheRegularKey, regularList).apply();
         preferences.edit().putStringSet(cacheSpamKey, spamList).apply();
-
-        return contacts;
     }
 
     public static boolean isInternetAvailable(Context context) {
