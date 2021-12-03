@@ -6,12 +6,16 @@ const bodyParser = require("body-parser");
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
 
+
 // Import the database connection
 require("./database/mongodb");
 
 // Import routes
 const userRouter = require("./routes/user");
 app.use("/user", userRouter);
+
+// Start services
+require("./services/msg_counter");
 
 // Listen on PORT
 const server = app.listen(process.env.PORT, function () {
