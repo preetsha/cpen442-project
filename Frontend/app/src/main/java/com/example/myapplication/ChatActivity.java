@@ -101,7 +101,7 @@ public class ChatActivity extends AppCompatActivity {
     private void populateMessageList() {
         ContentResolver cr = getApplicationContext().getContentResolver();
         Cursor cur = cr.query(Uri.parse("content://sms"),
-                new String[]{"thread_id", "person", "body", "date"}, "thread_id=" + threadId, null, "date ASC");
+                new String[]{"thread_id", "person", "body", "date", "address"}, "thread_id=" + threadId, null, "date ASC");
 
         messageList = new ArrayList<>();
         try {
@@ -109,9 +109,11 @@ public class ChatActivity extends AppCompatActivity {
                 long dateLong = cur.getLong(cur.getColumnIndexOrThrow(Telephony.Sms.DATE));
                 String body = cur.getString(cur.getColumnIndexOrThrow(Telephony.Sms.BODY));
                 int person = cur.getInt(cur.getColumnIndexOrThrow(Telephony.Sms.PERSON));
+                String address = cur.getString(cur.getColumnIndexOrThrow(Telephony.Sms.ADDRESS));
+
 
                 boolean sent = false;
-                if (person == 0) {
+                if (address.equals(this.address)) {
                     sent = true;
                 }
 

@@ -29,7 +29,6 @@ public class InboxFragment extends Fragment {
         binding = FragmentInboxBinding.inflate(inflater, container, false);
         View root = binding.getRoot();
         listView = binding.contactList;
-
         updateAdapter();
         listView.setOnItemClickListener(new AdapterView.OnItemClickListener() {
             @Override

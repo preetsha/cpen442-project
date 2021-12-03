@@ -163,7 +163,7 @@ public class EnterOTPFragment extends Fragment {
                         Log.e("FIN REGISTRATION", "onResponse: ", je);
                     }
 
-                    new SplashActivity().generateSessionKey(sharedPreferences, getActivity().getApplicationContext());
+                    SMSContacts.generateSessionKey(sharedPreferences, getContext());
                 }
             }, new Response.ErrorListener() {
                 @Override

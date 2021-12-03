@@ -18,7 +18,7 @@
         android:layout_height="match_parent"
         android:fontFamily="sans-serif-black"
         android:gravity="bottom|center_horizontal"
-        android:paddingBottom="20dp"
+        android:paddingBottom="30dp"
         android:text="TrustSMS"
         android:textAlignment="center"
         android:textSize="45sp"></TextView>

@@ -14,6 +14,9 @@ import android.util.Log;
 import androidx.core.app.NotificationCompat;
 import androidx.core.app.NotificationManagerCompat;
 
+import java.util.HashSet;
+import java.util.Set;
+
 public class SmsReceiver extends BroadcastReceiver {
     private static final String TAG =
             SmsReceiver.class.getSimpleName();
@@ -52,6 +55,41 @@ public class SmsReceiver extends BroadcastReceiver {
                     String message = currentMessage.getDisplayMessageBody();
 
                     Log.i("SmsReceiver", "senderNum: " + senderNum + "; message: " + message);
+
+                    //TODO: read settings here
+                    //TODO: improve logic here
+                    SharedPreferences preferences = context.getSharedPreferences("SharedPreferences", Context.MODE_PRIVATE);
+                    String cachedValue = SMSContacts.getCachedValue(preferences, senderNum);
+
+                    ContactDataModel.Level level;
+                    if (SMSContacts.isInternetAvailable(context)) {
+                        if (!cachedValue.isEmpty()) {
+                            level = SMSContacts.getLevelFromCachedValue(cachedValue);
+                        } else {
+                            // TODO: check if key is valid
+                            if (!preferences.getString("UUID", "").isEmpty() && !preferences.getString("SESSION_KEY", "").isEmpty()) {
+                                level = SMSContacts.computeTrustScore(context, phoneNumber);
+                            } else {
+                                level = ContactDataModel.Level.REGULAR;
+                            }
+                            level = SMSContacts.getLevelFromCachedValue(cachedValue);
+                        }
+                    } else {
+                        if (!cachedValue.isEmpty()) {
+                            level = SMSContacts.getLevelFromCachedValue(cachedValue);
+                        } else {
+                            level = ContactDataModel.Level.REGULAR;
+
+                            Set<String> regularList = preferences.getStringSet(SMSContacts.cacheRegularKey, new HashSet<>());
+                            regularList.add(phoneNumber);
+                            preferences.edit().remove(SMSContacts.cacheRegularKey).apply();
+                            preferences.edit().putStringSet(SMSContacts.cacheRegularKey, regularList).apply();
+                        }
+                    }
+
+                    if (level == ContactDataModel.Level.SPAM) {
+                        return;
+                    }
 
 
                     // Create an explicit intent for an Activity in your app
