@@ -19,7 +19,8 @@
         android:usesCleartextTraffic="true">
         <activity
             android:name=".SettingsActivity"
-            android:exported="true" />
+            android:exported="true"
+            android:theme="@style/Theme.MyApplication.NoActionBar"/>
         <activity
             android:name=".RegistrationActivity"
             android:exported="true"
