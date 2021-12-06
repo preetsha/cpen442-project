@@ -10,6 +10,7 @@ import android.widget.EditText;
 import android.widget.Toast;
 
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.appcompat.widget.Toolbar;
 
 import com.example.myapplication.databinding.ActivityComposeSmsBinding;
 import com.google.android.material.textfield.TextInputLayout;
@@ -26,6 +27,12 @@ public class ComposeSmsActivity extends AppCompatActivity {
 
         binding = ActivityComposeSmsBinding.inflate(getLayoutInflater());
         setContentView(binding.getRoot());
+
+        Toolbar toolbar = findViewById(R.id.toolbar_compose_sms);
+        setSupportActionBar(toolbar);
+        getSupportActionBar().setTitle("New Message");
+        getSupportActionBar().setDisplayHomeAsUpEnabled(true);
+        getSupportActionBar().setDisplayShowHomeEnabled(true);
 
     }
 
@@ -73,6 +80,12 @@ public class ComposeSmsActivity extends AppCompatActivity {
         textInput = null;
         binding = null;
         phoneNumber = "";
+    }
+
+    @Override
+    public boolean onSupportNavigateUp() {
+        onBackPressed();
+        return true;
     }
 
     public void sendMessage() {
