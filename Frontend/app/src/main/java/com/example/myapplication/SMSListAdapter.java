@@ -80,7 +80,11 @@ public class SMSListAdapter extends RecyclerView.Adapter {
             messageText.setText(message.getMessage());
 
             // Format the stored timestamp into a readable String using method.
-            dateText.setText(DateUtils.formatDateTime(itemView.getContext(), message.getTime(), DateUtils.FORMAT_ABBREV_MONTH));
+            if (message.isFirstMessageAtDate()) {
+                dateText.setText(DateUtils.formatDateTime(itemView.getContext(), message.getTime(), DateUtils.FORMAT_ABBREV_MONTH));
+            } else {
+                dateText.setText("");
+            }
             timeText.setText(DateUtils.formatDateTime(itemView.getContext(), message.getTime(), DateUtils.FORMAT_SHOW_TIME));
 
         }
@@ -101,7 +105,12 @@ public class SMSListAdapter extends RecyclerView.Adapter {
             messageText.setText(message.getMessage());
 
             // Format the stored timestamp into a readable String using method.
-            dateText.setText(DateUtils.formatDateTime(itemView.getContext(), message.getTime(), DateUtils.FORMAT_ABBREV_MONTH));
+            // Format the stored timestamp into a readable String using method.
+            if (message.isFirstMessageAtDate()) {
+                dateText.setText(DateUtils.formatDateTime(itemView.getContext(), message.getTime(), DateUtils.FORMAT_ABBREV_MONTH));
+            } else {
+                dateText.setText("");
+            }
             timeText.setText(DateUtils.formatDateTime(itemView.getContext(), message.getTime(), DateUtils.FORMAT_SHOW_TIME));
 
         }

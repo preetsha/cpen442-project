@@ -4,11 +4,13 @@ public class SMSMessage {
     private final String message;
     private final long time;
     private final boolean sent;
+    private final boolean firstMessageAtDate;
 
-    public SMSMessage(String message, long time, Boolean sent) {
+    public SMSMessage(String message, long time, Boolean sent, Boolean firstMessageAtDate) {
         this.message = message;
         this.time = time;
         this.sent = sent;
+        this.firstMessageAtDate = firstMessageAtDate;
     }
 
     public String getMessage() {
@@ -21,5 +23,9 @@ public class SMSMessage {
 
     public boolean isSent() {
         return sent;
+    }
+
+    public boolean isFirstMessageAtDate() {
+        return firstMessageAtDate;
     }
 }

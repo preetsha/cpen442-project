@@ -7,6 +7,7 @@ import android.net.Uri;
 import android.os.Bundle;
 import android.provider.Telephony;
 import android.telephony.SmsManager;
+import android.text.format.DateUtils;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
@@ -20,7 +21,9 @@ import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 public class ChatActivity extends AppCompatActivity {
     private RecyclerView mMessageRecycler;
@@ -104,6 +107,7 @@ public class ChatActivity extends AppCompatActivity {
                 new String[]{"thread_id", "person", "body", "date", "address"}, "thread_id=" + threadId, null, "date ASC");
 
         messageList = new ArrayList<>();
+        Set<String> seenDates = new HashSet<>();
         try {
             while (cur.moveToNext()) {
                 long dateLong = cur.getLong(cur.getColumnIndexOrThrow(Telephony.Sms.DATE));
@@ -113,11 +117,18 @@ public class ChatActivity extends AppCompatActivity {
 
 
                 boolean sent = false;
+                boolean isFirstDate = false;
                 if (address.equals(this.address)) {
                     sent = true;
                 }
 
-                SMSMessage message = new SMSMessage(body, dateLong, sent);
+                String date = DateUtils.formatDateTime(this, dateLong, DateUtils.FORMAT_SHOW_DATE);
+                if (!seenDates.contains(date)) {
+                    isFirstDate = true;
+                    seenDates.add(date);
+                }
+
+                SMSMessage message = new SMSMessage(body, dateLong, sent, isFirstDate);
                 messageList.add(message);
             }
         } finally {
@@ -129,7 +140,7 @@ public class ChatActivity extends AppCompatActivity {
 
     public void sendMessage() {
         String msgBody = textInput.getText().toString();
-        SMSMessage newMsg = new SMSMessage(msgBody, System.currentTimeMillis(), true);
+        SMSMessage newMsg = new SMSMessage(msgBody, System.currentTimeMillis(), true, true);
         messageList.add(newMsg);
 
         SmsManager smsManager = SmsManager.getDefault();
