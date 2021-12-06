@@ -26,7 +26,7 @@
         android:layout_height="wrap_content"
         android:text="@string/otp_code_sent"
         android:textAlignment="center"
-        app:layout_constraintBottom_toTopOf="@id/enterOTPContainer"
+        app:layout_constraintBottom_toTopOf="@id/verifyCodeContainer"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toBottomOf="@id/button_otp_back" />
