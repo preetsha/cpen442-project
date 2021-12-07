@@ -249,11 +249,11 @@ module.exports = {
         const unencryptedReq = req;
         
         const oneTimePass = unencryptedReq.body.one_time_pass;
-        const sharedSecret = unencryptedReq.body.shared_secret;
+        const sharedSecret = String(unencryptedReq.body.shared_secret);
         const phoneNumber = unencryptedReq.body.phone_number;
 
         // Check that sharedSecret is the proper length
-        const secretLength = Buffer.byteLength(Buffer.from(String(sharedSecret)));
+        const secretLength = Buffer.byteLength(Buffer.from(sharedSecret));
         if (secretLength != 24) {
             res.status(400).send({"message": "Shared secret must be 24 bytes"});
             return;
@@ -274,13 +274,12 @@ module.exports = {
             return;
         }
 
-        const unencryptedResponse = { 
-            phone: phoneNumber, 
-            salt: user.salt,
-        }
+        const unencryptedResponse = JSON.stringify({ 
+            "phone": phoneNumber, 
+            "salt": user.salt,
+        });
 
-        // const encryptedResponse = CryptoJS.AES.encrypt(JSON.stringify(unencryptedResponse), sharedSecret, { iv: process.env.PHONE_IV}).toString(CryptoJS.enc.Utf8);
-        const encryptedResponse = unencryptedResponse; // Still TODO, encrypt
+        const encryptedResponse = AES.encryptJsonString(unencryptedResponse, sharedSecret);
 
         res.status(201).send(encryptedResponse);
     },
