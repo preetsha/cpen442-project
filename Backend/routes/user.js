@@ -34,6 +34,8 @@ router.post('/testEncrypt', (req, res) => {
 // Pass a message you want formatted, timestamp will be updated, hash will be added,
 // and the payload will be encrypted. DELETE THIS AFTER DEVELOPMENT
 router.post('/debug', async (req, res) => {
+    
+    
     d = new Date()
     const message = req.body.message;
     
@@ -54,9 +56,15 @@ router.post('/debug', async (req, res) => {
         "hash": hash
     }
 
+    let key;
+    switch(req.body.keytype) {
+        case "secret": key = user.shared_secret; break;
+        case "session": key = user.session_key; break;
+        default: res.send({ "message": "This endpoint now requires a \"keytype\" field, where its value is either \"secret\" or \"session\"" }); return;
+    }
+
     const payloadBuffer = Buffer.from(JSON.stringify(payload), "utf-8")
     // const key = "H+UYf8Cajus6doDsHry+BQ=="
-    const key = user.shared_secret;
     const cipher = crypto.createCipheriv("aes-192-ecb", key, null);
     const payload_str = Buffer.concat([cipher.update(payloadBuffer), cipher.final()]).toString("base64");
 

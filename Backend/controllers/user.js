@@ -1,7 +1,6 @@
 const User = require("../models/user");
 const UserHelper = require("../helpers/user.js");
 const crypto = require("crypto"); // For random number generator
-const CryptoJS = require("crypto-js"); // TODO Delete this hot garbage
 const AES = require("../plugins/aes");
 const TwilioHelper = require("../plugins/sms");
 
@@ -238,10 +237,19 @@ module.exports = {
         if (!myUser) { res.status(400).send({}); return; }
         // time requested, expected nonce, and retries are saved
         const nonce = myUser.nonce_expected;
-        TwilioHelper.sendSMS(phoneNumber, `Your TrustSMS verification code is: \n${nonce}`)
+
+        try {
+            await TwilioHelper.sendSMS(phoneNumber, `Your TrustSMS verification code is: \n${nonce}`)
+        }
+        catch (e) {
+            res.status(200).send({ 
+                "message": `Init successful but couldn't send sms to phone.`,
+            });
+            return;
+        }
 
         res.status(200).send({ 
-            "message": `Send one-time-pass to phone.`,
+            "message": `Sent one-time-pass to phone.`,
         });
     },
     finishRegistration: async (req, res) => {
@@ -298,11 +306,6 @@ module.exports = {
             return;
         }
 
-        // Take their shared secret, decrypt the payload
-        const sharedSecret = user.shared_secret
-        //const uInPayload = JSON.parse(inPayload); // Remove this, uncomment below
-        // const uInPayload = JSON.parse(CryptoJS.AES.decrypt(inPayload, sharedSecret, { iv: process.env.PHONE_IV}).toString(CryptoJS.enc.Utf8))        
-
         // Stop if uuid in payload does not match sender
         if (uuid != inPayload.uuid) {
             console.log(`UUID mismatch in payload.`);
@@ -318,13 +321,15 @@ module.exports = {
         const gbModP = (BigInt(g) ** BigInt(b)) % BigInt(p);
 
         const sessionKey = (BigInt(gaModP) ** BigInt(b)) % BigInt(p);
-        user.session_key = "0x" + sessionKey.toString(16);
+        user.session_key = ("0".repeat(24) + sessionKey.toString(16)).slice(-24);
+        
         // Create and encrypt payload containing g^b mod p and R_A
         const uOutPayload = JSON.stringify({
             "nonce": rA,
             "keyhalf": gbModP.toString(16)
         });
 
+        const sharedSecret = user.shared_secret
         const outPayload = AES.encryptJsonString(uOutPayload, sharedSecret);
 
         // Add expected R_B to user obj
@@ -351,9 +356,6 @@ module.exports = {
             res.status(404).send({});
             return;
         }
-
-        // Decrypt response
-        //const uInPayload = JSON.parse(inPayload); // Todo do decryption
 
         // Stop if uuid in payload does not match sender
         if (uuid != inPayload.uuid) {
