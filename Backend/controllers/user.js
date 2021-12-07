@@ -4,7 +4,6 @@ const crypto = require("crypto"); // For random number generator
 const CryptoJS = require("crypto-js"); // TODO Delete this hot garbage
 const AES = require("../plugins/aes");
 const TwilioHelper = require("../plugins/sms");
-const auth = require("../middleware/auth");
 
 // Add phone number to trust/spam list
 const addToPhoneList = async (user, phone, list_type) => {
