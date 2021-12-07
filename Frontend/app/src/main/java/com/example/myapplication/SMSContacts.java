@@ -23,7 +23,6 @@ import com.android.volley.toolbox.JsonObjectRequest;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 
-import org.json.JSONArray;
 import org.json.JSONObject;
 
 import java.io.IOException;
@@ -365,7 +364,7 @@ public class SMSContacts {
         String route = "/user/trust";
         String url = root + route;
 
-        JSONObject jsonBody = getJsonBody(route, "phone " + phoneNumber, true, "", preferences);
+        JSONObject jsonBody = getJsonBody(route, "phone " + phoneNumber.replaceAll("[^a-zA-Z0-9]", ""), true, "", preferences);
         JsonObjectRequest jsonRequest = new JsonObjectRequest(Request.Method.PUT, url, jsonBody,
                 new Response.Listener<JSONObject>() {
                     @Override
@@ -391,7 +390,7 @@ public class SMSContacts {
         String route = "/user/spam";
         String url = root + route;
 
-        JSONObject jsonBody = getJsonBody(route, "phone " + phoneNumber, true, "", preferences);
+        JSONObject jsonBody = getJsonBody(route, "phone " + phoneNumber.replaceAll("[^a-zA-Z0-9]", ""), true, "", preferences);
         JsonObjectRequest jsonRequest = new JsonObjectRequest(Request.Method.PUT, url, jsonBody,
                 new Response.Listener<JSONObject>() {
                     @Override
@@ -452,16 +451,8 @@ public class SMSContacts {
             String root = "http://ec2-54-241-2-134.us-west-1.compute.amazonaws.com:8080";
             String route = "/user/known";
             String url = root + route;
-            JSONObject jsonBody = new JSONObject();
-            JSONArray numbers = new JSONArray();
             SharedPreferences preferences = context.getSharedPreferences("SharedPreferences", Context.MODE_PRIVATE);
-            try {
-                jsonBody.put("uuid", preferences.getString("UUID", ""));
-                // numbers.put(this.number.replaceAll("[^a-zA-Z0-9]", ""));
-                jsonBody.put("phone", this.number.replaceAll("[^a-zA-Z0-9]", ""));
-            } catch (Exception e) {
-                Log.d("Get known", "JSON body put error");
-            }
+            JSONObject jsonBody = getJsonBody(route, "phone " + this.number.replaceAll("[^a-zA-Z0-9]", ""), true, "", preferences);
 
             final okhttp3.MediaType JSON
                     = okhttp3.MediaType.parse("application/json; charset=utf-8");
@@ -495,16 +486,8 @@ public class SMSContacts {
             String root = "http://ec2-54-241-2-134.us-west-1.compute.amazonaws.com:8080";
             String route = "/user/trust";
             String url = root + route;
-            JSONObject jsonBody = new JSONObject();
-            JSONArray numbers = new JSONArray();
             SharedPreferences preferences = context.getSharedPreferences("SharedPreferences", Context.MODE_PRIVATE);
-            try {
-                jsonBody.put("uuid", preferences.getString("UUID", ""));
-                // numbers.put(this.number.replaceAll("[^a-zA-Z0-9]", ""));
-                jsonBody.put("phone", this.number.replaceAll("[^a-zA-Z0-9]", ""));
-            } catch (Exception e) {
-                Log.d("Get known", "JSON body put error");
-            }
+            JSONObject jsonBody = getJsonBody(route, "phone " + this.number.replaceAll("[^a-zA-Z0-9]", ""), true, "", preferences);
 
             final okhttp3.MediaType JSON
                     = okhttp3.MediaType.parse("application/json; charset=utf-8");
