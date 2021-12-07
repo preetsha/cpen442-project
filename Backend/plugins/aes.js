@@ -26,5 +26,16 @@ module.exports = {
             phone_number = phone_number.slice(1);
         }
         return phone_number;
-    }
+    },
+
+    encryptJSON: (json_object, key) => {
+        const jsonString = JSON.stringify(json_object);
+        const key_buffer = Buffer.from(key, "utf-8");
+
+        const jsonStringBuffer = Buffer.from(jsonString, "utf-8");
+        const cipher = crypto.createCipheriv("aes-192-ecb", key_buffer, null);
+        const encryptedJSON = Buffer.concat([cipher.update(jsonStringBuffer), cipher.final()]).toString("base64");
+
+        return encryptedJSON;
+    },
 }

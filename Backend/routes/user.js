@@ -2,6 +2,7 @@ const express = require('express');
 const auth = require('../middleware/auth');
 const router = express.Router();;
 const crypto = require("crypto");
+const AES = require("../plugins/aes");
 
 const userController = require('../controllers/user');
 const userHelper = require('../helpers/user');
@@ -18,6 +19,15 @@ router.get('/keystatus', auth.verifyReqWithShared, userController.isKeyExpired)
 router.post('/test', auth.verifyReqWithShared, (req, res) => {
     console.log("SUCCESS")
     res.status(200).send({ "message": "SUCCESS" });
+});
+router.post('/testEncrypt', (req, res) => {
+    const json = {
+        "message": "test1",
+        "okay": "now this is epic"
+    }
+    const encrypted = AES.encryptJSON(json, "3OIHaGC8QjAxfBwCCBo+3w==");
+    console.log(encrypted)
+    res.status(200).send({ "message": encrypted });
 });
 // Pass a message you want formatted, timestamp will be updated, hash will be added,
 // and the payload will be encrypted. DELETE THIS AFTER DEVELOPMENT

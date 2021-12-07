@@ -311,19 +311,18 @@ module.exports = {
 
         const b = crypto.randomInt(g, p-2);
 
-        const gaModP = Number(inPayload.keyhalf);
+        const gaModP = Number("0x" + inPayload.keyhalf);
         const gbModP = (BigInt(g) ** BigInt(b)) % BigInt(p);
 
         const sessionKey = (BigInt(gaModP) ** BigInt(b)) % BigInt(p);
         user.session_key = "0x" + sessionKey.toString(16);
         // Create and encrypt payload containing g^b mod p and R_A
-        const uOutPayload = JSON.stringify({
+        const uOutPayload = {
             "nonce": rA,
             "keyhalf": "0x" + gbModP.toString(16)
-        });
-        
-        const outPayload = uOutPayload;
-        // const outPayload = CryptoJS.AES.encrypt(uOutPayload, sharedSecret, { iv: process.env.PHONE_IV}).toString(CryptoJS.enc.Utf8);
+        }
+
+        const outPayload = AES.encryptJSON(uOutPayload, sharedSecret);
 
         // Add expected R_B to user obj
         const rB = crypto.randomInt(1, 10000);
