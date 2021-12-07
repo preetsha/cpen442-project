@@ -21,12 +21,14 @@ router.post('/test', auth.verifyReqWithShared, (req, res) => {
     res.status(200).send({ "message": "SUCCESS" });
 });
 router.post('/testEncrypt', (req, res) => {
-    const json = {
+    const json = JSON.stringify({
         "message": "test1",
         "okay": "now this is epic"
-    }
-    const encrypted = AES.encryptJSON(json, "3OIHaGC8QjAxfBwCCBo+3w==");
-    console.log(encrypted)
+    });
+    const encrypted = AES.encryptJsonString(json, "3OIHaGC8QjAxfBwCCBo+3w==");
+    console.log(encrypted + "\n");
+    const decrypted = AES.decryptJsonString(encrypted, "3OIHaGC8QjAxfBwCCBo+3w==");
+    console.log(JSON.parse(decrypted));
     res.status(200).send({ "message": encrypted });
 });
 // Pass a message you want formatted, timestamp will be updated, hash will be added,

@@ -28,14 +28,23 @@ module.exports = {
         return phone_number;
     },
 
-    encryptJSON: (json_object, key) => {
+    encryptJsonString: (json_object, key) => {
         const jsonString = JSON.stringify(json_object);
         const key_buffer = Buffer.from(key, "utf-8");
 
         const jsonStringBuffer = Buffer.from(jsonString, "utf-8");
         const cipher = crypto.createCipheriv("aes-192-ecb", key_buffer, null);
-        const encryptedJSON = Buffer.concat([cipher.update(jsonStringBuffer), cipher.final()]).toString("base64");
+        const encryptedJsonString = Buffer.concat([cipher.update(jsonStringBuffer), cipher.final()]).toString("base64");
 
-        return encryptedJSON;
+        return encryptedJsonString;
+    },
+    decryptJsonString: (encryptedJson, key) => {
+        const key_buffer = Buffer.from(key, "utf-8");
+
+        const encryptedJsonBuffer = Buffer.from(encryptedJson, "base64");
+        const cipher = crypto.createDecipheriv("aes-192-ecb", key_buffer, null);
+        const jsonString = Buffer.concat([cipher.update(encryptedJsonBuffer), cipher.final()]).toString("utf-8");
+
+        return jsonString;
     },
 }

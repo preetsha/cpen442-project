@@ -156,7 +156,6 @@ module.exports = {
 		}
 		
 		for (let otherPersonPhone of otherPersonPhones) {
-            // const encryptedOtherPersonPhone = otherPersonPhone; // Todo encrypt
             const encryptedOtherPersonPhone = AES.encryptPhone(otherPersonPhone)
 			
 			if (thisUser.trusted_numbers.includes(encryptedOtherPersonPhone)) {
@@ -220,8 +219,6 @@ module.exports = {
     },
     initRegistration: async (req, res) => {
         const phoneNumber = req.body.phone_number;
-
-        // Encrypt the phone number using the phone symmetric key
         const encryptedPhone = AES.encryptPhone(phoneNumber)
 
         let myUser = await UserHelper.findUserWithEncPhone(encryptedPhone);
@@ -254,6 +251,13 @@ module.exports = {
         const oneTimePass = unencryptedReq.body.one_time_pass;
         const sharedSecret = unencryptedReq.body.shared_secret;
         const phoneNumber = unencryptedReq.body.phone_number;
+
+        // Check that sharedSecret is the proper length
+        const secretLength = Buffer.byteLength(Buffer.from(String(sharedSecret)));
+        if (secretLength != 24) {
+            res.status(400).send({"message": "Shared secret must be 24 bytes"});
+            return;
+        }
 
         // Encrypt the phone number using the phone symmetric key
         const encryptedPhone = AES.encryptPhone(phoneNumber)
@@ -317,12 +321,12 @@ module.exports = {
         const sessionKey = (BigInt(gaModP) ** BigInt(b)) % BigInt(p);
         user.session_key = "0x" + sessionKey.toString(16);
         // Create and encrypt payload containing g^b mod p and R_A
-        const uOutPayload = {
+        const uOutPayload = JSON.stringify({
             "nonce": rA,
             "keyhalf": gbModP.toString(16)
-        }
+        });
 
-        const outPayload = AES.encryptJSON(uOutPayload, sharedSecret);
+        const outPayload = AES.encryptJsonString(uOutPayload, sharedSecret);
 
         // Add expected R_B to user obj
         const rB = crypto.randomInt(1, 10000);

@@ -75,7 +75,7 @@ const isMessageGood = (res, message, uuid) => {
 // Check that message hash matches the supplied hash (integrity check)
 const doesHashMatch = (res, message, hash) => {
     const sha = crypto.createHash("sha256");
-    sha.update(JSON.stringify(JSON.stringify(message)));
+    sha.update(JSON.stringify(message));
     const message_hash = sha.digest("hex");
     if (message_hash !== hash) {
         console.log("Hash mismatch!");
