@@ -315,22 +315,20 @@ module.exports = {
             res.status(401).send({});
         }
         
-        // Pick b, generate g^ab mod p AND g^b mod p
-        const g = "05" // TODO change later
-        const p = "17" // is 23 in decimal
-        const gaModP = uInPayload.keyhalf;
+        const g = 5
+        const p = 23
 
-        const serverDiffie = crypto.createDiffieHellman(p, "hex", g, "hex");
-        const gbModP = serverDiffie.generateKeys("hex");
+        const b = crypto.randomInt(g, p-2);
 
-        // Save the session key;
-        const sessionKey = serverDiffie.computeSecret(Buffer.from(gaModP, "hex"));
-        user.session_key = sessionKey.toString("hex");
+        const gaModP = Number("0x" + uInPayload.keyhalf);
+        const gbModP = (BigInt(g) ** BigInt(b)) % BigInt(p);
 
+        const sessionKey = (BigInt(gaModP) ** BigInt(b)) % BigInt(p);
+        user.session_key = "0x" + sessionKey.toString(16);
         // Create and encrypt payload containing g^b mod p and R_A
         const uOutPayload = JSON.stringify({
             "nonce": rA,
-            "keyhalf": gbModP.toString("hex")
+            "keyhalf": "0x" + gbModP.toString(16)
         });
         
         const outPayload = uOutPayload; // Remove this, uncomment below
