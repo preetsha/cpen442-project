@@ -186,7 +186,7 @@ module.exports = {
             return;
         }
 
-        const otherUser = await UserHelper.findUserWithEncPhone(encryptedOtherPersonPhone);
+        let otherUser = await UserHelper.findUserWithEncPhone(encryptedOtherPersonPhone);
         if (!otherUser) {
             otherUser = await UserHelper.createNonUserNumber(encryptedOtherPersonPhone);
             res.status(200).send({ "score": 0 });
