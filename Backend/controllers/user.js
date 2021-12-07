@@ -311,7 +311,7 @@ module.exports = {
 
         const b = crypto.randomInt(g, p-2);
 
-        const gaModP = Number("0x" + inPayload.keyhalf);
+        const gaModP = Number(inPayload.keyhalf);
         const gbModP = (BigInt(g) ** BigInt(b)) % BigInt(p);
 
         const sessionKey = (BigInt(gaModP) ** BigInt(b)) % BigInt(p);
@@ -319,7 +319,7 @@ module.exports = {
         // Create and encrypt payload containing g^b mod p and R_A
         const uOutPayload = {
             "nonce": rA,
-            "keyhalf": "0x" + gbModP.toString(16)
+            "keyhalf": gbModP.toString(16)
         }
 
         const outPayload = AES.encryptJSON(uOutPayload, sharedSecret);
