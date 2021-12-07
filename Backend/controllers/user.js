@@ -145,18 +145,16 @@ module.exports = {
         // Validate phone input
 		
         const otherPersonPhones = res.locals.message.phones;
-		
-		messageArray = [];
+		if (!Array.isArray(otherPersonPhones)) {
+            res.status(400).send({"message": "Must have 'phones' field with array of phone numbers" });
+            return;
+        }
+		let messageArray = [];
 		
 		const thisUser = await UserHelper.findUserWithUuid(req.body.uuid);
 		
-		if (!Array.isArray(otherPersonPhones)) {
-			res.status(400).send({});
-		}
-		
 		for (let otherPersonPhone of otherPersonPhones) {
             const encryptedOtherPersonPhone = AES.encryptPhone(otherPersonPhone)
-			
 			if (thisUser.trusted_numbers.includes(encryptedOtherPersonPhone)) {
 				messageArray.push("TRUSTED");
 			}
@@ -167,8 +165,6 @@ module.exports = {
 				messageArray.push("UNKNOWN");
 			}
 		}
-		
-	
         res.status(200).send({"known": messageArray });
     },
     getTrustScore: async (req, res) => {
