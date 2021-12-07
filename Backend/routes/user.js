@@ -74,7 +74,6 @@ router.post('/debug', async (req, res) => {
 
 // Endpoints to update user's list numbers marked as "trusted" or "spam"
 router.put('/trust', auth.verifyReqWithSession, userController.markTrusted);
-
 router.put('/spam', auth.verifyReqWithSession, userController.markSpam);
 router.delete('/trust', auth.verifyReqWithSession, userController.removeTrusted);
 router.delete('/spam', auth.verifyReqWithSession, userController.removeSpam);
