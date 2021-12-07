@@ -1,39 +1,30 @@
 const crypto = require("crypto");
 
 module.exports = {
-    encrypt: (plaintext, ivString, keyString) => {
-        if (plaintext.length < 16) 
-            throw `Plaintext length ${plaintext.length} is too short!`;
+    encryptPhone: (phone_number) => {
+        const padded_phone = String("0".repeat(16) + phone_number).slice(-16)
+        const phone_buffer = Buffer.from(padded_phone, "utf-8");
+        const iv = Buffer.from(process.env.PHONE_IV, "utf-8");
+        const key = Buffer.from(process.env.KEY, "utf-8");
 
-        if (ivString.length != 16) 
-            throw `IV string length ${ivString.length} is invalid`;
-
-        if (keyString.length != 32) 
-            throw `Keystring length ${keyString.length} is invalid`;
-        
-        const iv = Buffer.from(ivString, "utf-8");
-        const key = Buffer.from(keyString, "utf-8");
         const cipher = crypto.createCipheriv('aes-256-cbc', key, iv);
-        const encrypted = cipher.update(plaintext, "utf-8", "hex");
+        const encrypted = cipher.update(phone_buffer, "utf-8", "hex");
 
         return encrypted + cipher.final("hex");
     },
 
-    decrypt: (ciphertext, ivString, keyString) => {
-        if (ciphertext.length < 16) 
-            throw `Plaintext length ${ciphertext.length} is too short!`;
+    decryptPhone: (encrypted_phone_number) => {
+        const iv = Buffer.from(process.env.PHONE_IV, "utf-8");
+        const key = Buffer.from(process.env.KEY, "utf-8");
 
-        if (ivString.length != 16) 
-            throw `IV string length ${ivString.length} is invalid`;
+        const phone_buffer = Buffer.from(encrypted_phone_number, "hex");
+        const cipher = crypto.createDecipheriv("aes-256-cbc", key, iv);
+        const padded_phone = Buffer.concat([cipher.update(phone_buffer), cipher.final()]).toString("utf-8");
 
-        if (keyString.length != 32) 
-            throw `Keystring length ${keyString.length} is invalid`;
-        
-        const iv = Buffer.from(ivString, "utf-8");
-        const key = Buffer.from(keyString, "utf-8");
-        const cipher = crypto.createDecipheriv('aes-256-cbc', key, iv);
-        const decrypted = cipher.update(ciphertext, "hex", "utf-8");
-
-        return decrypted + cipher.final("hex");
+        let phone_number = padded_phone
+        while (phone_number.indexOf("0") == 0) {
+            phone_number = phone_number.slice(1);
+        }
+        return phone_number;
     }
 }
