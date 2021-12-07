@@ -1,7 +1,8 @@
 const User = require("../models/user");
 const UserHelper = require("../helpers/user.js");
 const crypto = require("crypto");
-const AES = require("../plugins/aes");
+// const AES = require("../plugins/aes");
+var CryptoJS = require("crypto-js");
 const TwilioHelper = require("../plugins/sms");
 const { createUnverifiedUser } = require("../helpers/user.js");
 
@@ -38,7 +39,9 @@ const updatePhoneLists = async (req, res, command) => {
     if (!user) { res.status(400).send({}); return; }
 
     // Encrypt the phone #
-    const encryptedPhone = phone; // TODO encrypt
+    // const encryptedPhone = phone; // TODO encrypt
+    const encryptedPhone = CryptoJS.AES.encrypt(phone, process.env.KEY).toString();
+    // const decryptedPhone = CryptoJS.AES.decrypt(encryptedPhone, process.env.KEY).toString(CryptoJS.enc.Utf8);
 
     // Update lists
     switch (command) {
@@ -158,7 +161,8 @@ module.exports = {
 		}
 		
 		for (let otherPersonPhone of otherPersonPhones) {
-			const encryptedOtherPersonPhone = otherPersonPhone; // Todo encrypt
+            // const encryptedOtherPersonPhone = otherPersonPhone; // Todo encrypt
+            const encryptedOtherPersonPhone = CryptoJS.AES.encrypt(otherPersonPhone, process.env.KEY).toString(CryptoJS.enc.Utf8);
 			
 			if (thisUser.trusted_numbers.includes(encryptedOtherPersonPhone)) {
 				messageArray.push("TRUSTED");
@@ -184,7 +188,8 @@ module.exports = {
         // Validate phone input
         const otherPersonPhone = req.body.phone;
 
-        const encryptedOtherPersonPhone = otherPersonPhone; // Todo encrypt
+        // const encryptedOtherPersonPhone = otherPersonPhone; // Todo encrypt
+        const encryptedOtherPersonPhone = CryptoJS.AES.encrypt(otherPersonPhone, process.env.KEY).toString(CryptoJS.enc.Utf8);
 
         if (thisUser.trusted_numbers.includes(encryptedOtherPersonPhone)) {
             res.status(200).send({ "score": 0, "message": "TRUSTED" });
@@ -225,8 +230,8 @@ module.exports = {
         const paddedPhone = ("0".repeat(16) + phoneNumber).slice(-16); // Pad phone number to 16 chars for encryption
 
         // Encrypt the phone number using the phone symmetric key
-        // const encryptedPhone = AES.encrypt(paddedPhone, process.env.PHONE_IV, process.env.KEY);
-        const encryptedPhone = phoneNumber;
+        // const encryptedPhone = phoneNumber;
+        const encryptedPhone = CryptoJS.AES.encrypt(phoneNumber, process.env.KEY).toString(CryptoJS.enc.Utf8);
 
         let myUser = await UserHelper.findUserWithEncPhone(encryptedPhone);
         if (!myUser) {
@@ -261,9 +266,9 @@ module.exports = {
 
         // Encrypt the phone number using the phone symmetric key
         // Phone # padded to 16 characters
-        const paddedPhone = ("0".repeat(16) + phoneNumber).slice(-16); 
-        // const encryptedPhone = AES.encrypt(paddedPhone, process.env.PHONE_IV, process.env.KEY);
-        const encryptedPhone = phoneNumber;
+        // const encryptedPhone = phoneNumber;
+        const encryptedPhone = CryptoJS.AES.encrypt(phoneNumber, process.env.KEY).toString(CryptoJS.enc.Utf8);
+        
         
         // Attempt to very the user corresponding to the phone number
         const user = await UserHelper.verifyUser(encryptedPhone, oneTimePass, sharedSecret);
@@ -284,8 +289,8 @@ module.exports = {
 
         // Encrypt and send the response object
         // const paddedSharedSecret = (sharedSecret + "0".repeat(32)).slice(0, 32);
-        // const encryptedResponse = AES.encrypt(JSON.stringify(unencryptedResponse), process.env.REGISTRATION_IV, paddedSharedSecret);
-        const encryptedResponse = unencryptedResponse;
+        // const encryptedResponse = unencryptedResponse;
+        const encryptedResponse = CryptoJS.AES.encrypt(JSON.stringify(unencryptedResponse), sharedSecret).toString(CryptoJS.enc.Utf8);
 
         res.status(201).send(encryptedResponse);
     },
@@ -306,8 +311,8 @@ module.exports = {
 
         // Take their shared secret, decrypt the payload
         const sharedSecret = user.shared_secret
-        const uInPayload = JSON.parse(inPayload); // Remove this, uncomment below
-        // const uInPayload = JSON.parse(AES.decrypt(inPayload, process.env.DIFFIE_IV, sharedSecret))
+        // const uInPayload = JSON.parse(inPayload); // Remove this, uncomment below
+        const uInPayload = JSON.parse(CryptoJS.AES.decrypt(inPayload, sharedSecret).toString(CryptoJS.enc.Utf8))        
 
         // Stop if uuid in payload does not match sender
         if (uuid != uInPayload.uuid) {
