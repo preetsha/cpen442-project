@@ -11,9 +11,9 @@ router.post('/initreg', userController.initRegistration);
 
 router.post('/finreg', userController.finishRegistration);
 
-router.post('/initgetkey', userController.initGetSessionKey);
-router.post('/fingetkey', userController.finishGetSessionKey);
-router.get('/keystatus', userController.isKeyExpired)
+router.post('/initgetkey', auth.verifyReqWithShared, userController.initGetSessionKey);
+router.post('/fingetkey', auth.verifyReqWithShared, userController.finishGetSessionKey);
+router.get('/keystatus', auth.verifyReqWithShared, userController.isKeyExpired)
 
 router.post('/test', auth.verifyReqWithShared, (req, res) => {
     console.log("SUCCESS")

@@ -4,6 +4,7 @@ const crypto = require("crypto"); // For random number generator
 const CryptoJS = require("crypto-js"); // TODO Delete this hot garbage
 const AES = require("../plugins/aes");
 const TwilioHelper = require("../plugins/sms");
+const auth = require("../middleware/auth");
 
 // Add phone number to trust/spam list
 const addToPhoneList = async (user, phone, list_type) => {
@@ -283,7 +284,7 @@ module.exports = {
     initGetSessionKey: async (req, res) => {
         const uuid = req.body.uuid;
         const rA = req.body.nonce;
-        const inPayload = req.body.payload;
+        const inPayload = res.locals.message;
         
         // Find the user using their UUID
         const user = await User.findOne({ uuid: uuid }).catch(() => null);
@@ -297,11 +298,11 @@ module.exports = {
 
         // Take their shared secret, decrypt the payload
         const sharedSecret = user.shared_secret
-        const uInPayload = JSON.parse(inPayload); // Remove this, uncomment below
+        //const uInPayload = JSON.parse(inPayload); // Remove this, uncomment below
         // const uInPayload = JSON.parse(CryptoJS.AES.decrypt(inPayload, sharedSecret, { iv: process.env.PHONE_IV}).toString(CryptoJS.enc.Utf8))        
 
         // Stop if uuid in payload does not match sender
-        if (uuid != uInPayload.uuid) {
+        if (uuid != inPayload.uuid) {
             console.log(`UUID mismatch in payload.`);
             res.status(401).send({});
         }
@@ -311,7 +312,7 @@ module.exports = {
 
         const b = crypto.randomInt(g, p-2);
 
-        const gaModP = Number("0x" + uInPayload.keyhalf);
+        const gaModP = Number(inPayload.keyhalf);
         const gbModP = (BigInt(g) ** BigInt(b)) % BigInt(p);
 
         const sessionKey = (BigInt(gaModP) ** BigInt(b)) % BigInt(p);
@@ -338,7 +339,7 @@ module.exports = {
     },
     finishGetSessionKey: async (req, res) => {
         const uuid = req.body.uuid;
-        const inPayload = req.body.payload;
+        const inPayload = res.locals.message;
         
         // Find the user using their UUID
         const user = await UserHelper.findUserWithUuid(uuid);
@@ -351,17 +352,17 @@ module.exports = {
         }
 
         // Decrypt response
-        const uInPayload = JSON.parse(inPayload); // Todo do decryption
+        //const uInPayload = JSON.parse(inPayload); // Todo do decryption
 
         // Stop if uuid in payload does not match sender
-        if (uuid != uInPayload.uuid) {
+        if (uuid != inPayload.uuid) {
             console.log(`UUID mismatch in payload.`);
             res.status(401).send({});
             return;
         }
         
         // Check R_B
-        if (String(user.nonce_expected) != uInPayload.nonce) {
+        if (String(user.nonce_expected) != inPayload.nonce) {
             console.log(`Nonce mismatch!`);
             res.status(401).send({});
             return;
