@@ -7,6 +7,7 @@ import android.os.Build;
 import android.os.Bundle;
 import android.provider.Telephony;
 import android.view.Menu;
+import android.view.MenuItem;
 import android.view.View;
 
 import androidx.appcompat.app.AppCompatActivity;
@@ -75,6 +76,21 @@ public class MainActivity extends AppCompatActivity {
         // Inflate the menu; this adds items to the action bar if it is present.
         getMenuInflater().inflate(R.menu.main, menu);
         return true;
+    }
+
+    @Override
+    public boolean onOptionsItemSelected(MenuItem item) {
+        // Handle action bar item clicks here.
+        int id = item.getItemId();
+
+        if (id == R.id.action_settings) {
+            System.out.println("OPEN SETTINGS");
+            Intent mainIntent = new Intent(MainActivity.this, SettingsActivity.class);
+            startActivity(mainIntent);
+            return true;
+        }
+
+        return super.onOptionsItemSelected(item);
     }
 
     @Override
