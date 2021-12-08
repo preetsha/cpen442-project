@@ -87,8 +87,6 @@ public class RegistrationFragment extends Fragment {
                     } catch (Exception e) {
                         Log.d("INIT REGISTRATION", "JSON body put error");
                     }
-                    // Request a string response from the provided URL.
-                    String requestBody = jsonBody.toString();
                     JsonObjectRequest jsonRequest = new JsonObjectRequest(Request.Method.POST, url, jsonBody,
                         new Response.Listener<JSONObject>() {
                             @Override
