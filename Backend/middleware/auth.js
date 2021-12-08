@@ -38,7 +38,7 @@ const notVerifiedUser = (res, user) => {
 const parsePayload = (res, payload_string) => {
     try {
         const payload = JSON.parse(payload_string);
-        console.log(payload)
+        //console.log(payload)
         if (!objectHasProperties(payload, ["message", "hash"])) {
             throw "Missing message or hash";
         }
@@ -87,12 +87,11 @@ const doesHashMatch = (res, message, hash) => {
 }
 
 // Attempt to decrypt the payload
-const decryptPayload = (res, encrypted_payload, key) => {
+const decryptPayload = (res, encrypted_payload, key, key_encoding) => {
     try {
-        const cipherBuffer = Buffer.from(encrypted_payload, "base64");
-		console.log(Buffer.byteLength(Buffer.from(key, "utf-8")))
-		console.log(Buffer.byteLength(Buffer.from(key, "base64")))
-        const cipher = crypto.createDecipheriv("aes-128-ecb", Buffer.from(key, "base64"), null);
+        const cipherBuffer = Buffer.from(encrypted_payload, "base64")
+		console.log(key);
+        const cipher = crypto.createDecipheriv("aes-192-ecb", Buffer.from(key, key_encoding), null);
         const payload_str = Buffer.concat([cipher.update(cipherBuffer), cipher.final()]).toString("utf8");
         return payload_str;
     }
@@ -103,8 +102,8 @@ const decryptPayload = (res, encrypted_payload, key) => {
     }
 }
 
-const verifyPayload = (req, res, uuid, encrypted_payload, key) => {
-    const payload_str = decryptPayload(res, encrypted_payload, key);
+const verifyPayload = (req, res, uuid, encrypted_payload, key, key_encoding = "utf-8") => {
+    const payload_str = decryptPayload(res, encrypted_payload, key, key_encoding);
     if (!payload_str) return false;
 
     // Attempt to parse the payload as a JSON object
@@ -113,7 +112,6 @@ const verifyPayload = (req, res, uuid, encrypted_payload, key) => {
 
     // Check the UUID, timestamp, and path all match
     const message = payload.message;
-	console.log(message);
     if (!isMessageGood(res, message, uuid)) return false;
 
 

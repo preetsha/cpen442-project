@@ -31,18 +31,19 @@ module.exports = {
     encryptJsonString: (json_object, key, key_encoding = "utf-8") => {
         const jsonString = JSON.stringify(json_object);
         const key_buffer = Buffer.from(key, key_encoding);
-
+		
+		console.log(key);
         const jsonStringBuffer = Buffer.from(jsonString, "utf-8");
-        const cipher = crypto.createCipheriv("aes-128-ecb", key_buffer, null);
+        const cipher = crypto.createCipheriv("aes-192-ecb", key_buffer, null);
         const encryptedJsonString = Buffer.concat([cipher.update(jsonStringBuffer), cipher.final()]).toString("base64");
 
         return encryptedJsonString;
     },
     decryptJsonString: (encryptedJson, key, key_encoding = "utf-8") => {
         const key_buffer = Buffer.from(key, key_encoding);
-
+		
         const encryptedJsonBuffer = Buffer.from(encryptedJson, "base64");
-        const cipher = crypto.createDecipheriv("aes-128-ecb", key_buffer, null);
+        const cipher = crypto.createDecipheriv("aes-192-ecb", key_buffer, null);
         const jsonString = Buffer.concat([cipher.update(encryptedJsonBuffer), cipher.final()]).toString("utf-8");
 
         return jsonString;

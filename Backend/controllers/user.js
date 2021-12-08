@@ -156,7 +156,7 @@ module.exports = {
             status = "UNKNOWN";
         }
         const response = {"status": status }
-        const encryptedResponse = AES.encryptJsonString(JSON.stringify(response), thisUser.shared_secret);
+        const encryptedResponse = AES.encryptJsonString(JSON.stringify(response), thisUser.session_key);
         res.status(200).send({ "payload": encryptedResponse });
     },
 
@@ -172,18 +172,24 @@ module.exports = {
         const encryptedOtherPersonPhone = AES.encryptPhone(otherPersonPhone);
 
         if (thisUser.trusted_numbers.includes(encryptedOtherPersonPhone)) {
-            res.status(200).send({ "score": 0, "message": "TRUSTED" });
+            const response = { "score": 0, "message": "TRUSTED" };
+			const encryptedResponse = AES.encryptJsonString(JSON.stringify(response), thisUser.session_key);
+			res.status(200).send({ "payload": encryptedResponse });
             return;
         }
         else if (thisUser.spam_numbers.includes(encryptedOtherPersonPhone)) {
-            res.status(200).send({ "score": -1, "message": "SPAM" });
+            const response = { "score": -1, "message": "SPAM" };
+			const encryptedResponse = AES.encryptJsonString(JSON.stringify(response), thisUser.session_key);
+			res.status(200).send({ "payload": encryptedResponse });
             return;
         }
 
         let otherUser = await UserHelper.findUserWithEncPhone(encryptedOtherPersonPhone);
         if (!otherUser) {
             otherUser = await UserHelper.createNonUserNumber(encryptedOtherPersonPhone);
-            res.status(200).send({ "score": 0 });
+            const response = { "score": 0 };
+			const encryptedResponse = AES.encryptJsonString(JSON.stringify(response), thisUser.session_key);
+			res.status(200).send({ "payload": encryptedResponse });
             return;
         }
 
@@ -201,7 +207,7 @@ module.exports = {
         trustScore -= networkActivity;
         
         const response = { "score": trustScore }
-        const encryptedResponse = AES.encryptJsonString(JSON.stringify(response), thisUser.shared_secret);
+        const encryptedResponse = AES.encryptJsonString(JSON.stringify(response), thisUser.session_key);
         res.status(200).send({ "payload": encryptedResponse });
     },
     temp: async (req, res) => {
@@ -248,7 +254,7 @@ module.exports = {
         const unencryptedReq = req;
         
         const oneTimePass = unencryptedReq.body.one_time_pass;
-        const sharedSecret = unencryptedReq.body.shared_secret;
+        const sharedSecret = String(unencryptedReq.body.shared_secret);
         const phoneNumber = unencryptedReq.body.phone_number;
 
         // Check that sharedSecret is the proper length
@@ -316,7 +322,7 @@ module.exports = {
         const gbModP = (BigInt(g) ** BigInt(b)) % BigInt(p);
 
         const sessionKey = (BigInt(gaModP) ** BigInt(b)) % BigInt(p);
-        user.session_key = ("0".repeat(16) + sessionKey.toString(16)).slice(-16);
+        user.session_key = ("0".repeat(24) + sessionKey.toString(16)).slice(-24);
 		
 		console.log(user.session_key);
         
@@ -327,7 +333,7 @@ module.exports = {
         });
 
         const sharedSecret = user.shared_secret
-        const outPayload = AES.encryptJsonString(uOutPayload, sharedSecret, "base64");
+        const outPayload = AES.encryptJsonString(uOutPayload, sharedSecret);
 		
 		console.log("TEST " + outPayload);
 
