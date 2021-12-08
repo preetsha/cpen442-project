@@ -28,6 +28,7 @@ import org.json.JSONObject;
 import java.nio.charset.StandardCharsets;
 import java.security.InvalidKeyException;
 import java.security.NoSuchAlgorithmException;
+import java.security.SecureRandom;
 import java.util.Base64;
 
 import javax.crypto.KeyGenerator;
@@ -63,8 +64,11 @@ public class EnterOTPFragment extends Fragment {
         readPhoneNumber();
         try {
             // create new key
-            secretKey = KeyGenerator.getInstance("AES").generateKey();
+            KeyGenerator g = KeyGenerator.getInstance("AES");
+            g.init(128, new SecureRandom());
+            secretKey = g.generateKey();
             // get base64 encoded version of the key
+
             String encodedKey = Base64.getEncoder().encodeToString(secretKey.getEncoded());
             sharedSecret = encodedKey;
             // decode the base64 encoded string

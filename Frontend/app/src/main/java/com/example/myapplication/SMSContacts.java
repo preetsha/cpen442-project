@@ -23,6 +23,7 @@ import com.android.volley.toolbox.JsonObjectRequest;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 
+import org.json.JSONException;
 import org.json.JSONObject;
 
 import java.io.IOException;
@@ -42,6 +43,7 @@ import java.util.stream.Collectors;
 import okhttp3.Interceptor;
 import okhttp3.OkHttpClient;
 import okhttp3.RequestBody;
+
 
 public class SMSContacts {
     public static ArrayList<ContactDataModel> contactList;
@@ -258,14 +260,17 @@ public class SMSContacts {
                 try {
                     String json = threadA.execute().get();
                     JsonObject obj = JsonParser.parseString(json).getAsJsonObject();
-                    if (obj.has("message")) {
-                        if (obj.get("message").toString().equals("TRUSTED")) {
+                    SharedPreferences preferences = context.getSharedPreferences("SharedPreferences", Context.MODE_PRIVATE);
+                    String decrypted = AESManager.decrypt(obj.get("payload").getAsString(), preferences.getString("SESSION_KEY", ""));
+                    JSONObject responsePayload = new JSONObject(decrypted);
+                    if (responsePayload.has("message")) {
+                        if (responsePayload.getString("message").equals("TRUSTED")) {
                             result[0] = ContactDataModel.Level.PRIORITY;
                         } else {
                             result[0] = ContactDataModel.Level.SPAM;
                         }
                     } else {
-                        double score = obj.get("score").getAsDouble();
+                        double score = responsePayload.getDouble("score");
                         if (score < 0) {
                             result[0] = ContactDataModel.Level.SPAM;
                         }
@@ -274,6 +279,8 @@ public class SMSContacts {
                 } catch (InterruptedException e) {
                     e.printStackTrace();
                 } catch (ExecutionException e) {
+                    e.printStackTrace();
+                } catch (JSONException e) {
                     e.printStackTrace();
                 }
             }
@@ -419,11 +426,16 @@ public class SMSContacts {
                 try {
                     String json = threadA.execute().get();
                     JsonObject obj = JsonParser.parseString(json).getAsJsonObject();
-                    result[0] = obj.get("message").toString();
+                    SharedPreferences preferences = context.getSharedPreferences("SharedPreferences", Context.MODE_PRIVATE);
+                    String decrypted = AESManager.decrypt(obj.get("payload").getAsString(), preferences.getString("SESSION_KEY", ""));
+                    JSONObject responsePayload = new JSONObject(decrypted);
+                    result[0] = responsePayload.getString("status");
                     latchA.countDown();
                 } catch (InterruptedException e) {
                     e.printStackTrace();
                 } catch (ExecutionException e) {
+                    e.printStackTrace();
+                } catch (JSONException e) {
                     e.printStackTrace();
                 }
             }
@@ -533,7 +545,8 @@ public class SMSContacts {
                         try {
                             String key = preferences.getString("SECRET", "");
                             String responseNonce = Integer.toString(response.getInt("nonce"));
-                            JSONObject responsePayload = new JSONObject(new AESManager().decrypt(response.getString("payload"), key));
+                            String decrypted = AESManager.decrypt(response.getString("payload"), key);
+                            JSONObject responsePayload = new JSONObject(decrypted);
                             String responseChallengeNonce = responsePayload.getString("nonce");
                             String responseKeyhalf = responsePayload.getString("keyhalf");
 
@@ -569,7 +582,7 @@ public class SMSContacts {
                                          Context context) {
         // make json body
         String route = "/user/fingetkey";
-        JSONObject jsonBody = getJsonBody(route, "keyhalf " + responseKeyhalf, false, "", preferences);
+        JSONObject jsonBody = getJsonBody(route, "nonce " + responseNonce, false, "", preferences);
         String url = rootUrl + route;
 
         try {
@@ -581,7 +594,7 @@ public class SMSContacts {
                             // store session key
                             BigInteger gbmodp = new BigInteger(responseKeyhalf, 16);
                             String sessionKeyInHex = gbmodp.modPow(a2, p).toString(16);
-                            String paddedSessionKey = String.format("%2s", sessionKeyInHex).replace(' ', '0');
+                            String paddedSessionKey = String.format("%24s", sessionKeyInHex).replace(' ', '0');
                             preferences.edit().putString("SESSION_KEY", paddedSessionKey).apply();
 
                             Intent mainIntent = new Intent(context, MainActivity.class);

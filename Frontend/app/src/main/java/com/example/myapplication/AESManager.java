@@ -20,7 +20,7 @@ public class AESManager {
             Cipher cipher = Cipher.getInstance("AES/ECB/PKCS5Padding");
             cipher.init(Cipher.ENCRYPT_MODE, originalKey);
             // new String(bytes, UTF8_CHARSET)
-            return Base64.getEncoder().encodeToString(cipher.doFinal(jsonPayload.getBytes("UTF-8")));
+            return Base64.getEncoder().encodeToString(cipher.doFinal(jsonPayload.getBytes(StandardCharsets.UTF_8)));
         }
         catch (Exception e) {
             System.out.println("Error while encrypting: " + e.toString());
@@ -32,12 +32,19 @@ public class AESManager {
         // decode the base64 encoded string
         byte[] decodedKey = Base64.getDecoder().decode(key);
         // rebuild key using SecretKeySpec
-        SecretKey originalKey = new SecretKeySpec(decodedKey, 0, decodedKey.length, "AES");
+        //SecretKeySpec originalKey = new SecretKeySpec(decodedKey, "AES");
+        SecretKeySpec originalKey = new SecretKeySpec(key.getBytes(StandardCharsets.UTF_8), "AES");
 
         try {
             Cipher cipher = Cipher.getInstance("AES/ECB/PKCS5PADDING");
+
             cipher.init(Cipher.DECRYPT_MODE, originalKey);
-            return new String(cipher.doFinal(Base64.getDecoder().decode(jsonPayload)));
+            //byte [] decodedPayload = Base64.getDecoder().decode(jsonPayload);
+            byte[] decrypted = cipher.doFinal(Base64.getDecoder().decode(jsonPayload));
+            String decryptedStr = new String(decrypted);
+            decryptedStr = decryptedStr.substring(decryptedStr.indexOf("{"), decryptedStr.lastIndexOf("}") + 1);
+            decryptedStr = decryptedStr.replace("\\\"", "'");
+            return decryptedStr;
         }
         catch (Exception e) {
             System.out.println("Error while decrypting: " + e.toString());
