@@ -15,6 +15,7 @@ const objectHasProperties = (myObj, pList) => {
 const argsAreBad = (res, uuid, e_payload) => {
     if (typeof (uuid) != "string" || typeof (e_payload) != "string") {
         // res.status(400).send({ "message": "Invalid parameters" });
+		console.log("UUID or e_payload are not a string");
         res.status(400).send({ "message": "UUID or e_payload are not a string" });
         return true;
     }
@@ -88,8 +89,10 @@ const doesHashMatch = (res, message, hash) => {
 // Attempt to decrypt the payload
 const decryptPayload = (res, encrypted_payload, key) => {
     try {
-        const cipherBuffer = Buffer.from(encrypted_payload, "base64")
-        const cipher = crypto.createDecipheriv("aes-192-ecb", key, null);
+        const cipherBuffer = Buffer.from(encrypted_payload, "base64");
+		console.log(Buffer.byteLength(Buffer.from(key, "utf-8")))
+		console.log(Buffer.byteLength(Buffer.from(key, "base64")))
+        const cipher = crypto.createDecipheriv("aes-128-ecb", Buffer.from(key, "base64"), null);
         const payload_str = Buffer.concat([cipher.update(cipherBuffer), cipher.final()]).toString("utf8");
         return payload_str;
     }
@@ -110,7 +113,9 @@ const verifyPayload = (req, res, uuid, encrypted_payload, key) => {
 
     // Check the UUID, timestamp, and path all match
     const message = payload.message;
+	console.log(message);
     if (!isMessageGood(res, message, uuid)) return false;
+
 
     // Check that the payload hash matches the message's SHA256 hash
     // if (!doesHashMatch(res, message, payload.hash)) return false; TODO: reenable later and fix pls

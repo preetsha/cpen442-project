@@ -180,7 +180,7 @@ module.exports = {
             return;
         }
 
-        const otherUser = await UserHelper.findUserWithEncPhone(encryptedOtherPersonPhone);
+        let otherUser = await UserHelper.findUserWithEncPhone(encryptedOtherPersonPhone);
         if (!otherUser) {
             otherUser = await UserHelper.createNonUserNumber(encryptedOtherPersonPhone);
             res.status(200).send({ "score": 0 });
@@ -248,13 +248,15 @@ module.exports = {
         const unencryptedReq = req;
         
         const oneTimePass = unencryptedReq.body.one_time_pass;
-        const sharedSecret = String(unencryptedReq.body.shared_secret);
+        const sharedSecret = unencryptedReq.body.shared_secret;
         const phoneNumber = unencryptedReq.body.phone_number;
 
         // Check that sharedSecret is the proper length
-        const secretLength = Buffer.byteLength(Buffer.from(sharedSecret));
-        if (secretLength != 24) {
-            res.status(400).send({"message": "Shared secret must be 24 bytes"});
+		console.log(sharedSecret)
+        const secretLength = Buffer.byteLength(Buffer.from(sharedSecret, 'base64'));
+        if (secretLength != 16) {
+			console.log("Shared secret must be 16 bytes" + secretLength);
+            res.status(400).send({"message": "Shared secret must be 16 bytes"});
             return;
         }
 
@@ -265,22 +267,24 @@ module.exports = {
         const user = await UserHelper.verifyUser(encryptedPhone, oneTimePass, sharedSecret);
 
         if (user === "ABORT") {
+			console.log("Too many incorrect attempts.");
             res.status(400).send({"message": "Too many incorrect attempts."});
             return;
         }
         if (!user) {
+			console.log("!user.");
             res.status(400).send({});
             return;
         }
 
-        const unencryptedResponse = JSON.stringify({ 
+        const unencryptedResponse = { 
             "phone": phoneNumber, 
             "salt": user.salt,
-        });
+        };
 
-        const encryptedResponse = AES.encryptJsonString(unencryptedResponse, sharedSecret);
+        //const encryptedResponse = AES.encryptJsonString(unencryptedResponse, sharedSecret);
 
-        res.status(201).send(encryptedResponse);
+        res.status(201).send(unencryptedResponse);
     },
     initGetSessionKey: async (req, res) => {
         const uuid = req.body.uuid;
@@ -312,7 +316,9 @@ module.exports = {
         const gbModP = (BigInt(g) ** BigInt(b)) % BigInt(p);
 
         const sessionKey = (BigInt(gaModP) ** BigInt(b)) % BigInt(p);
-        user.session_key = ("0".repeat(24) + sessionKey.toString(16)).slice(-24);
+        user.session_key = ("0".repeat(16) + sessionKey.toString(16)).slice(-16);
+		
+		console.log(user.session_key);
         
         // Create and encrypt payload containing g^b mod p and R_A
         const uOutPayload = JSON.stringify({
@@ -321,7 +327,9 @@ module.exports = {
         });
 
         const sharedSecret = user.shared_secret
-        const outPayload = AES.encryptJsonString(uOutPayload, sharedSecret);
+        const outPayload = AES.encryptJsonString(uOutPayload, sharedSecret, "base64");
+		
+		console.log("TEST " + outPayload);
 
         // Add expected R_B to user obj
         const rB = crypto.randomInt(1, 10000);

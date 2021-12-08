@@ -78,8 +78,8 @@ router.put('/spam', auth.verifyReqWithSession, userController.markSpam);
 router.delete('/trust', auth.verifyReqWithSession, userController.removeTrusted);
 router.delete('/spam', auth.verifyReqWithSession, userController.removeSpam);
 
-router.get('/known', auth.verifyReqWithSession, userController.checkIfKnown);
-router.get('/trust', auth.verifyReqWithSession, userController.getTrustScore);
+router.post('/known', auth.verifyReqWithSession, userController.checkIfKnown);
+router.post('/trust', auth.verifyReqWithSession, userController.getTrustScore);
 
 
 module.exports = router;
