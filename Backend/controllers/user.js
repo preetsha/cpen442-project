@@ -142,31 +142,24 @@ const calculateTrustScore = async (userMainNumber, userOtherNumber, numLayers, c
 
 module.exports = {
     checkIfKnown: async (req, res) => {
-        // Validate phone input
-		
-        const otherPersonPhones = res.locals.message.phones;
-		if (!Array.isArray(otherPersonPhones)) {
-            res.status(400).send({"message": "Must have 'phones' field with array of phone numbers" });
-            return;
+        const otherPersonPhone = res.locals.message.phone;
+        const thisUser = await UserHelper.findUserWithUuid(req.body.uuid);
+        const encryptedOtherPersonPhone = AES.encryptPhone(otherPersonPhone)
+        let status;
+        if (thisUser.trusted_numbers.includes(encryptedOtherPersonPhone)) {
+            status = "TRUSTED";
         }
-		let messageArray = [];
-		
-		const thisUser = await UserHelper.findUserWithUuid(req.body.uuid);
-		
-		for (let otherPersonPhone of otherPersonPhones) {
-            const encryptedOtherPersonPhone = AES.encryptPhone(otherPersonPhone)
-			if (thisUser.trusted_numbers.includes(encryptedOtherPersonPhone)) {
-				messageArray.push("TRUSTED");
-			}
-			else if (thisUser.spam_numbers.includes(encryptedOtherPersonPhone)) {
-				messageArray.push("SPAM");
-			}
-			else {
-				messageArray.push("UNKNOWN");
-			}
-		}
-        res.status(200).send({"known": messageArray });
+        else if (thisUser.spam_numbers.includes(encryptedOtherPersonPhone)) {
+            status = "SPAM";
+        }
+        else {
+            status = "UNKNOWN";
+        }
+        const response = {"status": status }
+        const encryptedResponse = AES.encryptJsonString(JSON.stringify(response), thisUser.shared_secret);
+        res.status(200).send({ "payload": encryptedResponse });
     },
+
     getTrustScore: async (req, res) => {
         const thisUser = await UserHelper.findUserWithUuid(req.body.uuid);
         if (!thisUser) {
@@ -207,7 +200,9 @@ module.exports = {
         const networkActivity = Math.floor(otherUser.detected_recent_messages / 20);
         trustScore -= networkActivity;
         
-        res.status(200).send({ "score": trustScore });
+        const response = { "score": trustScore }
+        const encryptedResponse = AES.encryptJsonString(JSON.stringify(response), thisUser.shared_secret);
+        res.status(200).send({ "payload": encryptedResponse });
     },
     temp: async (req, res) => {
         res.send(await UserHelper.createNonUserNumber(res.locals.message.phone))
