@@ -38,8 +38,8 @@ import javax.crypto.spec.SecretKeySpec;
 public class EnterOTPFragment extends Fragment {
 
     private FragmentEnterOtpBinding binding;
-    private String otp;
-    private String phoneNumber;
+    private String otp = "";
+    private String phoneNumber = "";
     private final int OTP_CODE_LENGTH = 6;
     private SharedPreferences sharedPreferences;
     private String sharedSecret;
@@ -103,6 +103,8 @@ public class EnterOTPFragment extends Fragment {
                 Log.d("OTP LENGTH", String.valueOf(otp.length()));
                 if (otp.length() == OTP_CODE_LENGTH) {
                     verifyPhoneNumber();
+                } else {
+                    Toast.makeText(getContext(), "Please enter your OTP code above", Toast.LENGTH_SHORT).show();
                 }
             }
         });
@@ -119,8 +121,7 @@ public class EnterOTPFragment extends Fragment {
             @Override
             public void onClick(View view) {
                 // TODO: API Call to Resend Token
-                NavHostFragment.findNavController(EnterOTPFragment.this)
-                        .navigate(R.id.action_EnterOTPFragment_to_RegistrationFragment);
+                resendOTPCode();
             }
         });
     }
@@ -163,13 +164,42 @@ public class EnterOTPFragment extends Fragment {
                         Log.e("FIN REGISTRATION", "onResponse: ", je);
                     }
 
-                    new SplashActivity().generateSessionKey(sharedPreferences, getActivity().getApplicationContext());
+                    SMSContacts.generateSessionKey(sharedPreferences, getContext());
                 }
             }, new Response.ErrorListener() {
                 @Override
                 public void onErrorResponse(VolleyError error) {
                     Toast.makeText(getContext(), "Authentication Failed: Please try again later", Toast.LENGTH_SHORT).show();
                     Log.e("FIN REGISTRATION", "onErrorResponse: ", error);
+                }
+            }
+        );
+
+        // Add the request to the RequestQueue.
+        QueueSingleton.getInstance(getActivity().getApplicationContext()).addToRequestQueue(jsonRequest);
+    }
+
+    private void resendOTPCode() {
+        String root = "http://ec2-54-241-2-134.us-west-1.compute.amazonaws.com:8080";
+        String route = "/user/initreg";
+        String url = root + route;
+        JSONObject jsonBody = new JSONObject();
+        try {
+            jsonBody.put("phone_number", phoneNumber);
+        } catch (Exception e) {
+            Log.d("INIT REGISTRATION", "JSON body put error");
+        }
+        JsonObjectRequest jsonRequest = new JsonObjectRequest(Request.Method.POST, url, jsonBody,
+            new Response.Listener<JSONObject>() {
+                @Override
+                public void onResponse(JSONObject response) {
+                    Toast.makeText(getContext(), "OTP Code will be re-sent shortly", Toast.LENGTH_SHORT).show();
+                }
+            }, new Response.ErrorListener() {
+                @Override
+                public void onErrorResponse(VolleyError error) {
+                    Log.e("INIT REGISTRATION", "onErrorResponse: ", error);
+                    Toast.makeText(getContext(), "That didn't work", Toast.LENGTH_SHORT).show();
                 }
             }
         );

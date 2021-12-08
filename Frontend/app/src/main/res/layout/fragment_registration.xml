@@ -12,7 +12,7 @@
         android:layout_height="wrap_content"
         android:fontFamily="sans-serif-black"
         android:text="@string/trust_sms"
-        android:textColor="@color/gray_dark"
+        android:textColor="@color/white"
         android:textSize="48sp"
         app:layout_constraintBottom_toTopOf="@id/editTextPhoneContainer"
         app:layout_constraintEnd_toEndOf="parent"

@@ -27,7 +27,7 @@ import org.json.JSONObject;
 public class RegistrationFragment extends Fragment {
 
     private FragmentRegistrationBinding binding;
-    private String phoneNumber;
+    private String phoneNumber = "";
     private final int PHONE_NUMBER_LENGTH = 10;
     private SharedPreferences sharedPreferences;
 
@@ -87,8 +87,6 @@ public class RegistrationFragment extends Fragment {
                     } catch (Exception e) {
                         Log.d("INIT REGISTRATION", "JSON body put error");
                     }
-                    // Request a string response from the provided URL.
-                    String requestBody = jsonBody.toString();
                     JsonObjectRequest jsonRequest = new JsonObjectRequest(Request.Method.POST, url, jsonBody,
                         new Response.Listener<JSONObject>() {
                             @Override
@@ -109,6 +107,8 @@ public class RegistrationFragment extends Fragment {
                     savePhoneNumber(phoneNumber);
                     NavHostFragment.findNavController(RegistrationFragment.this)
                             .navigate(R.id.action_RegistrationFragment_to_EnterOTPFragment);
+                } else {
+                    Toast.makeText(getContext(), "Please check your phone number before trying again", Toast.LENGTH_SHORT).show();
                 }
             }
         });

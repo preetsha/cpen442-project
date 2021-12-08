@@ -7,23 +7,25 @@ import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
 import android.os.Bundle;
-import android.util.Log;
+import android.os.Handler;
 import android.widget.Toast;
 
+import androidx.annotation.NonNull;
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
 
-import com.android.volley.Request;
-import com.android.volley.Response;
-import com.android.volley.VolleyError;
-import com.android.volley.toolbox.JsonObjectRequest;
-
-import org.json.JSONObject;
-
-import java.math.BigInteger;
-import java.util.Random;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
 
 public class SplashActivity extends Activity {
+
+    /**
+     * Permissions that need to be explicitly requested from end user.
+     */
+    private static final String[] REQUIRED_SDK_PERMISSIONS = new String[]{
+            Manifest.permission.RECEIVE_SMS, Manifest.permission.SEND_SMS, Manifest.permission.INTERNET, Manifest.permission.READ_CONTACTS, Manifest.permission.ACCESS_NETWORK_STATE, Manifest.permission.READ_SMS};
+    private final static int REQUEST_CODE_ASK_PERMISSIONS = 100;
 
 
     @Override
@@ -32,6 +34,8 @@ public class SplashActivity extends Activity {
 
         setContentView(R.layout.activity_splash);
         QueueSingleton.getInstance(getApplicationContext());
+
+
     }
 
     @Override
@@ -43,175 +47,93 @@ public class SplashActivity extends Activity {
         nextActivity = Chat or Main depending on "chat_number" argument
         */
 
-        int permissionCheckReadSms = ContextCompat.checkSelfPermission(this, Manifest.permission.READ_SMS);
-        int permissionCheckReadContacts = ContextCompat.checkSelfPermission(this, Manifest.permission.READ_CONTACTS);
-        int permissionCheckSendSms = ContextCompat.checkSelfPermission(this, Manifest.permission.SEND_SMS);
-        int permissionCheckReceiveSms = ContextCompat.checkSelfPermission(this, Manifest.permission.RECEIVE_SMS);
-        int permissionCheckInternet = ContextCompat.checkSelfPermission(this, Manifest.permission.INTERNET);
-
-        if (permissionCheckReadSms != PackageManager.PERMISSION_GRANTED ||
-                permissionCheckReadContacts != PackageManager.PERMISSION_GRANTED ||
-                permissionCheckSendSms != PackageManager.PERMISSION_GRANTED ||
-                permissionCheckReceiveSms != PackageManager.PERMISSION_GRANTED ||
-                permissionCheckInternet != PackageManager.PERMISSION_GRANTED) {
-
-            ActivityCompat.requestPermissions(this, new String[]{Manifest.permission.READ_SMS, Manifest.permission.READ_CONTACTS, Manifest.permission.SEND_SMS, Manifest.permission.RECEIVE_SMS, Manifest.permission.INTERNET}, 100);
-            permissionCheckReadSms = ContextCompat.checkSelfPermission(this, Manifest.permission.READ_SMS);
-            permissionCheckReadContacts = ContextCompat.checkSelfPermission(this, Manifest.permission.READ_CONTACTS);
-            permissionCheckSendSms = ContextCompat.checkSelfPermission(this, Manifest.permission.SEND_SMS);
-            permissionCheckReceiveSms = ContextCompat.checkSelfPermission(this, Manifest.permission.RECEIVE_SMS);
-            permissionCheckInternet = ContextCompat.checkSelfPermission(this, Manifest.permission.INTERNET);
-            if (permissionCheckReadSms != PackageManager.PERMISSION_GRANTED ||
-                    permissionCheckReadContacts != PackageManager.PERMISSION_GRANTED ||
-                    permissionCheckSendSms != PackageManager.PERMISSION_GRANTED ||
-                    permissionCheckReceiveSms != PackageManager.PERMISSION_GRANTED ||
-                    permissionCheckInternet != PackageManager.PERMISSION_GRANTED) {
-                Toast.makeText(getApplicationContext(), "This App requires these permissions to run!", Toast.LENGTH_SHORT).show();
-                finish();
-            }
-        }
-
-        SharedPreferences pref = getApplicationContext().getSharedPreferences("SharedPreferences", Context.MODE_PRIVATE);
-        Intent registrationIntent = new Intent(SplashActivity.this, RegistrationActivity.class);
-        if (SMSContacts.isInternetAvailable(this)) {
-            if (pref.getString("UUID", "").isEmpty() || pref.getString("SECRET", "").isEmpty()) {
-                startActivity(registrationIntent);
-            } else {
-                //TODO: call backend enpoint and use existing session key
-                /*
-                if (sk exists in cache):
-                    f() which calls Thomas's endpoint to check if
-                    can continue
-                 else:
-                    generateSessionKey(); // update session key in cache
-                 */
-                generateSessionKey(pref, getApplicationContext());
-//                finish();
-            }
-        } else {
-            if (pref.getString("UUID", "").isEmpty() || pref.getString("SECRET", "").isEmpty()) {
-                startActivity(registrationIntent);
-            } else {
-                SMSContacts.populateSMSGroups(getApplicationContext());
-                Intent mainIntent = new Intent(SplashActivity.this, MainActivity.class);
-                startActivity(mainIntent);
-                finish();
-            }
-        }
-
-        finish();
-    }
-
-    public void generateSessionKey(SharedPreferences preferences, Context context) {
-        initGetSessionKey(preferences, context);
-    }
-
-    private void initGetSessionKey(SharedPreferences preferences, Context context) {
-
-        String root = "http://ec2-54-241-2-134.us-west-1.compute.amazonaws.com:8080";
-        String route = "/user/initgetkey";
-        String url = root + route;
-        BigInteger g = new BigInteger("5");
-        BigInteger p = new BigInteger("23");
-        int a = new Random(System.currentTimeMillis()).nextInt(p.intValue() - (2 * g.intValue())) + g.intValue();
-        BigInteger a2 = new BigInteger(Integer.toString(a));
-        String nonce = Integer.toString(new Random(System.currentTimeMillis()).nextInt());
-        String keyhalf = String.format("%2s", g.modPow(a2, p).toString(16)).replace(' ', '0');
-        JSONObject jsonBody = new JSONObject();
-        JSONObject payload = new JSONObject();
         try {
-            payload.put("uuid", preferences.getString("UUID", ""));
-            payload.put("keyhalf", keyhalf);
-            jsonBody.put("uuid", preferences.getString("UUID", ""));
-            jsonBody.put("nonce", nonce);
-            jsonBody.put("payload", payload.toString());
-        } catch (Exception e) {
-            Log.e("generateSessionKey", "JSON body put error");
-        }
-        // Request a string response from the provided URL.
-        String requestBody = jsonBody.toString();
-        JsonObjectRequest jsonRequest = new JsonObjectRequest(Request.Method.POST, url, jsonBody,
-            new Response.Listener<JSONObject>() {
+            new Handler().postDelayed(new Runnable() {
                 @Override
-                public void onResponse(JSONObject response) {
-                    try {
-                        String responseNonce = Integer.toString(response.getInt("nonce"));
-                        JSONObject responsePayload = new JSONObject(response.getString("payload"));
-                        String responseChallengeNonce = responsePayload.getString("nonce");
-                        String responseKeyhalf = responsePayload.getString("keyhalf");
+                public void run() {
+                    checkPermissions();
 
-                        if (nonce.contentEquals(responseChallengeNonce)) {
-                            // make next request and store session key
-                            finGetSessionKey(responseKeyhalf, a2, p, preferences, responseNonce, root, context);
+                    SharedPreferences pref = getApplicationContext().getSharedPreferences("SharedPreferences", Context.MODE_PRIVATE);
+                    Intent registrationIntent = new Intent(SplashActivity.this, RegistrationActivity.class);
+
+                    if (SMSContacts.isInternetAvailable(getApplicationContext())) {
+                        if (pref.getString("UUID", "").isEmpty() || pref.getString("SECRET", "").isEmpty()) {
+                            startActivity(registrationIntent);
                         } else {
-                            throw new Exception("Could not verify server identity");
+                            //TODO: call backend enpoint and use existing session key
+                            /*
+                            if (sk exists in cache):
+                                f() which calls Thomas's endpoint to check if
+                                can continue
+                             else:
+                                generateSessionKey(); // update session key in cache
+                             */
+                            SMSContacts.generateSessionKey(pref, SplashActivity.this);
+                            //                finish();
                         }
-                    } catch (Exception e) {
-                        Log.e("initGetSessionKey response", "JSON body get error", e);
+                    } else {
+                        if (pref.getString("UUID", "").isEmpty() || pref.getString("SECRET", "").isEmpty()) {
+                            startActivity(registrationIntent);
+                        } else {
+                            Intent mainIntent = new Intent(SplashActivity.this, MainActivity.class);
+                            startActivity(mainIntent);
+                            finish();
+                        }
                     }
-                }
-            }, new Response.ErrorListener() {
-                @Override
-                public void onErrorResponse(VolleyError error) {
-                    Log.e("generateSessionKey - initGetSessionKey", "onErrorResponse: ", error);
-                    Toast.makeText(
-                            context,
-                            "Failed to establish a session key, please try again later",
-                            Toast.LENGTH_SHORT
-                    ).show();
-                }
-            }
-        );
 
-        // Add the request to the RequestQueue.
-        QueueSingleton.getInstance(context).addToRequestQueue(jsonRequest);
+                    finish();
+
+                }
+            }, 2000);
+
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+
+
     }
 
-    private void finGetSessionKey(String responseKeyhalf, BigInteger a2, BigInteger p,
-                                  SharedPreferences preferences, String responseNonce, String rootUrl,
-                                  Context context) {
-        // make json body
-        JSONObject jsonBody = new JSONObject();
-        JSONObject payload = new JSONObject();
-        String url = rootUrl + "/user/fingetkey";
+    /**
+     * Checks the dynamically-controlled permissions and requests missing permissions from end user.
+     */
+    protected void checkPermissions() {
+        final List<String> missingPermissions = new ArrayList<String>();
+        // check all required dynamic permissions
+        for (final String permission : REQUIRED_SDK_PERMISSIONS) {
+            final int result = ContextCompat.checkSelfPermission(this, permission);
+            if (result != PackageManager.PERMISSION_GRANTED) {
+                missingPermissions.add(permission);
+            }
+        }
+        if (!missingPermissions.isEmpty()) {
+            // request all missing permissions
+            final String[] permissions = missingPermissions
+                    .toArray(new String[missingPermissions.size()]);
+            ActivityCompat.requestPermissions(this, permissions, REQUEST_CODE_ASK_PERMISSIONS);
+        } else {
+            final int[] grantResults = new int[REQUIRED_SDK_PERMISSIONS.length];
+            Arrays.fill(grantResults, PackageManager.PERMISSION_GRANTED);
+            onRequestPermissionsResult(REQUEST_CODE_ASK_PERMISSIONS, REQUIRED_SDK_PERMISSIONS,
+                    grantResults);
+        }
+    }
 
-        try {
-            payload.put("uuid", preferences.getString("UUID", ""));
-            payload.put("nonce", responseNonce);
-            jsonBody.put("uuid", preferences.getString("UUID", ""));
-            jsonBody.put("payload", payload.toString());
-
-            JsonObjectRequest jsonRequestFin = new JsonObjectRequest(Request.Method.POST, url, jsonBody,
-                new Response.Listener<JSONObject>() {
-                    @Override
-                    public void onResponse(JSONObject response) {
-                        // store session key
-                        BigInteger gbmodp = new BigInteger(responseKeyhalf, 16);
-                        String sessionKeyInHex = gbmodp.modPow(a2, p).toString(16);
-                        String paddedSessionKey = String.format("%2s", sessionKeyInHex).replace(' ', '0');
-                        preferences.edit().putString("SESSION_KEY", paddedSessionKey).apply();
-
-                        SMSContacts.setContactList(SMSContacts.populateSMSGroups(context));
-                        Intent mainIntent = new Intent(SplashActivity.this, MainActivity.class);
-                        startActivity(mainIntent);
-                    }
-                },
-                new Response.ErrorListener() {
-                    @Override
-                    public void onErrorResponse(VolleyError error) {
-                        Log.e("generateSessionKey - finGetSessionKey", "onErrorResponse: ", error);
-                        Toast.makeText(
-                                context,
-                                "Failed to establish a session key, please try again later",
-                                Toast.LENGTH_SHORT
-                        ).show();
+    @Override
+    public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions,
+                                           @NonNull int[] grantResults) {
+        switch (requestCode) {
+            case REQUEST_CODE_ASK_PERMISSIONS:
+                for (int index = permissions.length - 1; index >= 0; --index) {
+                    if (grantResults[index] != PackageManager.PERMISSION_GRANTED) {
+                        // exit the app if one permission is not granted
+                        Toast.makeText(this, "Required permission '" + permissions[index]
+                                + "' not granted, exiting", Toast.LENGTH_LONG).show();
+                        finish();
+                        return;
                     }
                 }
-            );
-            // Add the request to the RequestQueue.
-            QueueSingleton.getInstance(context).addToRequestQueue(jsonRequestFin);
-        } catch (Exception e) {
-            Log.e("generateSessionKey - finGetSessionKey", "JSON body put error");
+                // all permissions were granted
+                break;
         }
     }
 }
