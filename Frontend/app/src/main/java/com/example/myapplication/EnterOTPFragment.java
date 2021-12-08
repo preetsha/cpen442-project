@@ -38,8 +38,8 @@ import javax.crypto.spec.SecretKeySpec;
 public class EnterOTPFragment extends Fragment {
 
     private FragmentEnterOtpBinding binding;
-    private String otp;
-    private String phoneNumber;
+    private String otp = "";
+    private String phoneNumber = "";
     private final int OTP_CODE_LENGTH = 6;
     private SharedPreferences sharedPreferences;
     private String sharedSecret;
@@ -103,6 +103,8 @@ public class EnterOTPFragment extends Fragment {
                 Log.d("OTP LENGTH", String.valueOf(otp.length()));
                 if (otp.length() == OTP_CODE_LENGTH) {
                     verifyPhoneNumber();
+                } else {
+                    Toast.makeText(getContext(), "Please enter your OTP code above", Toast.LENGTH_SHORT).show();
                 }
             }
         });

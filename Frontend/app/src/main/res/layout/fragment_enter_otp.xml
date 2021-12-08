@@ -16,6 +16,7 @@
         android:minWidth="32dp"
         android:minHeight="32dp"
         android:src="@drawable/ic_arrow_back"
+        android:tint="@color/white"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent" />
 
@@ -26,6 +27,7 @@
         android:layout_height="wrap_content"
         android:text="@string/otp_code_sent"
         android:textAlignment="center"
+        android:textColor="@color/white"
         app:layout_constraintBottom_toTopOf="@id/verifyCodeContainer"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
@@ -91,7 +93,8 @@
             android:layout_height="wrap_content"
             android:layout_gravity="center"
             android:text="@string/did_not_receive"
-            android:textAlignment="center" />
+            android:textAlignment="center"
+            android:textColor="@color/white" />
 
         <Button
             android:id="@+id/button_second"
