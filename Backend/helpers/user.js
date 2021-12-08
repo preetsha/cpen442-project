@@ -1,5 +1,6 @@
 const User = require("../models/user");
-const crypto = require("crypto")
+const crypto = require("crypto");
+const AES = require("../plugins/aes");
 
 const createNonceString = () => {
     const oneTimePass = crypto.randomInt(0, 1000000) // 6 digit number
@@ -125,7 +126,7 @@ const verifyUser = async (encryptedPhone, nonce, secret) => {
         }
     }
     // Pick salt and generate unique uuid
-    const decryptedPhone = encryptedPhone; // Todo Decrypt
+    const decryptedPhone = AES.decryptPhone(encryptedPhone);
     const [uuid, salt] = await getUniqueUuidAndSalt(decryptedPhone);
     
     myUser.uuid = uuid;

@@ -1,9 +1,8 @@
 const User = require("../models/user");
 const UserHelper = require("../helpers/user.js");
-const crypto = require("crypto");
+const crypto = require("crypto"); // For random number generator
 const AES = require("../plugins/aes");
 const TwilioHelper = require("../plugins/sms");
-const { createUnverifiedUser } = require("../helpers/user.js");
 
 // Add phone number to trust/spam list
 const addToPhoneList = async (user, phone, list_type) => {
@@ -31,14 +30,13 @@ const removeFromPhoneList = async (user, phone, list_type) => {
 const updatePhoneLists = async (req, res, command) => {
     // Use UUID to find the user
     const uuid = String(req.body.uuid);
-    const phone = String(req.body.phone);
-    
+    const phone = String(res.locals.message.phone);
     // Check user exists
     const user = await UserHelper.findUserWithUuid(uuid);
     if (!user) { res.status(400).send({}); return; }
 
     // Encrypt the phone #
-    const encryptedPhone = phone; // TODO encrypt
+    const encryptedPhone = AES.encryptPhone(phone)
 
     // Update lists
     switch (command) {
@@ -137,7 +135,6 @@ const calculateTrustScore = async (userMainNumber, userOtherNumber, numLayers, c
     return trustScore;  
 }
 
-
 /*
     Main call:
     calculateTrustScore(userMain, userOther, 3);
@@ -145,26 +142,24 @@ const calculateTrustScore = async (userMainNumber, userOtherNumber, numLayers, c
 
 module.exports = {
     checkIfKnown: async (req, res) => {
-        // Validate phone input
-		
-		const otherPersonPhone = req.body.phone;
-
-        const encryptedOtherPersonPhone = otherPersonPhone; // Todo encrypt
-
+        const otherPersonPhone = res.locals.message.phone;
         const thisUser = await UserHelper.findUserWithUuid(req.body.uuid);
+        const encryptedOtherPersonPhone = AES.encryptPhone(otherPersonPhone)
+        let status;
         if (thisUser.trusted_numbers.includes(encryptedOtherPersonPhone)) {
-            res.status(200).send({"message": "TRUSTED" });
-            return;
+            status = "TRUSTED";
         }
         else if (thisUser.spam_numbers.includes(encryptedOtherPersonPhone)) {
-            res.status(200).send({"message": "SPAM" });
-            return;
+            status = "SPAM";
         }
         else {
-            res.status(200).send({"message": "UNKNOWN" });
-            return;
+            status = "UNKNOWN";
         }
+        const response = {"status": status }
+        const encryptedResponse = AES.encryptJsonString(JSON.stringify(response), thisUser.session_key);
+        res.status(200).send({ "payload": encryptedResponse });
     },
+
     getTrustScore: async (req, res) => {
         const thisUser = await UserHelper.findUserWithUuid(req.body.uuid);
         if (!thisUser) {
@@ -173,23 +168,28 @@ module.exports = {
             return;
         }
         // Validate phone input
-        const otherPersonPhone = req.body.phone;
-
-        const encryptedOtherPersonPhone = otherPersonPhone; // Todo encrypt
+        const otherPersonPhone = res.locals.message.phone;
+        const encryptedOtherPersonPhone = AES.encryptPhone(otherPersonPhone);
 
         if (thisUser.trusted_numbers.includes(encryptedOtherPersonPhone)) {
-            res.status(200).send({ "score": 0, "message": "TRUSTED" });
+            const response = { "score": 0, "message": "TRUSTED" };
+			const encryptedResponse = AES.encryptJsonString(JSON.stringify(response), thisUser.session_key);
+			res.status(200).send({ "payload": encryptedResponse });
             return;
         }
         else if (thisUser.spam_numbers.includes(encryptedOtherPersonPhone)) {
-            res.status(200).send({ "score": -1, "message": "SPAM" });
+            const response = { "score": -1, "message": "SPAM" };
+			const encryptedResponse = AES.encryptJsonString(JSON.stringify(response), thisUser.session_key);
+			res.status(200).send({ "payload": encryptedResponse });
             return;
         }
 
         let otherUser = await UserHelper.findUserWithEncPhone(encryptedOtherPersonPhone);
         if (!otherUser) {
             otherUser = await UserHelper.createNonUserNumber(encryptedOtherPersonPhone);
-            res.status(200).send({ "score": 0 });
+            const response = { "score": 0 };
+			const encryptedResponse = AES.encryptJsonString(JSON.stringify(response), thisUser.session_key);
+			res.status(200).send({ "payload": encryptedResponse });
             return;
         }
 
@@ -206,18 +206,16 @@ module.exports = {
         const networkActivity = Math.floor(otherUser.detected_recent_messages / 20);
         trustScore -= networkActivity;
         
-        res.status(200).send({ "score": trustScore });
+        const response = { "score": trustScore }
+        const encryptedResponse = AES.encryptJsonString(JSON.stringify(response), thisUser.session_key);
+        res.status(200).send({ "payload": encryptedResponse });
     },
     temp: async (req, res) => {
-        res.send(await UserHelper.createNonUserNumber(req.body.phone))
+        res.send(await UserHelper.createNonUserNumber(res.locals.message.phone))
     },
     initRegistration: async (req, res) => {
         const phoneNumber = req.body.phone_number;
-        const paddedPhone = ("0".repeat(16) + phoneNumber).slice(-16); // Pad phone number to 16 chars for encryption
-
-        // Encrypt the phone number using the phone symmetric key
-        // const encryptedPhone = AES.encrypt(paddedPhone, process.env.PHONE_IV, process.env.KEY);
-        const encryptedPhone = phoneNumber;
+        const encryptedPhone = AES.encryptPhone(phoneNumber)
 
         let myUser = await UserHelper.findUserWithEncPhone(encryptedPhone);
         if (!myUser) {
@@ -236,10 +234,19 @@ module.exports = {
         if (!myUser) { res.status(400).send({}); return; }
         // time requested, expected nonce, and retries are saved
         const nonce = myUser.nonce_expected;
-        TwilioHelper.sendSMS(phoneNumber, `Your TrustSMS verification code is: \n${nonce}`)
+
+        try {
+            await TwilioHelper.sendSMS(phoneNumber, `Your TrustSMS verification code is: \n${nonce}`)
+        }
+        catch (e) {
+            res.status(200).send({ 
+                "message": `Init successful but couldn't send sms to phone.`,
+            });
+            return;
+        }
 
         res.status(200).send({ 
-            "message": `Send one-time-pass to phone.`,
+            "message": `Sent one-time-pass to phone.`,
         });
     },
     finishRegistration: async (req, res) => {
@@ -247,43 +254,48 @@ module.exports = {
         const unencryptedReq = req;
         
         const oneTimePass = unencryptedReq.body.one_time_pass;
-        const sharedSecret = unencryptedReq.body.shared_secret;
+        const sharedSecret = String(unencryptedReq.body.shared_secret);
         const phoneNumber = unencryptedReq.body.phone_number;
 
+        // Check that sharedSecret is the proper length
+		console.log(sharedSecret)
+        const secretLength = Buffer.byteLength(Buffer.from(sharedSecret, 'base64'));
+        if (secretLength != 16) {
+			console.log("Shared secret must be 16 bytes" + secretLength);
+            res.status(400).send({"message": "Shared secret must be 16 bytes"});
+            return;
+        }
+
         // Encrypt the phone number using the phone symmetric key
-        // Phone # padded to 16 characters
-        const paddedPhone = ("0".repeat(16) + phoneNumber).slice(-16); 
-        // const encryptedPhone = AES.encrypt(paddedPhone, process.env.PHONE_IV, process.env.KEY);
-        const encryptedPhone = phoneNumber;
+        const encryptedPhone = AES.encryptPhone(phoneNumber)
         
         // Attempt to very the user corresponding to the phone number
         const user = await UserHelper.verifyUser(encryptedPhone, oneTimePass, sharedSecret);
 
         if (user === "ABORT") {
+			console.log("Too many incorrect attempts.");
             res.status(400).send({"message": "Too many incorrect attempts."});
             return;
         }
         if (!user) {
+			console.log("!user.");
             res.status(400).send({});
             return;
         }
 
         const unencryptedResponse = { 
-            phone: phoneNumber, 
-            salt: user.salt,
-        }
+            "phone": phoneNumber, 
+            "salt": user.salt,
+        };
 
-        // Encrypt and send the response object
-        // const paddedSharedSecret = (sharedSecret + "0".repeat(32)).slice(0, 32);
-        // const encryptedResponse = AES.encrypt(JSON.stringify(unencryptedResponse), process.env.REGISTRATION_IV, paddedSharedSecret);
-        const encryptedResponse = unencryptedResponse;
+        //const encryptedResponse = AES.encryptJsonString(unencryptedResponse, sharedSecret);
 
-        res.status(201).send(encryptedResponse);
+        res.status(201).send(unencryptedResponse);
     },
     initGetSessionKey: async (req, res) => {
         const uuid = req.body.uuid;
         const rA = req.body.nonce;
-        const inPayload = req.body.payload;
+        const inPayload = res.locals.message;
         
         // Find the user using their UUID
         const user = await User.findOne({ uuid: uuid }).catch(() => null);
@@ -295,37 +307,35 @@ module.exports = {
             return;
         }
 
-        // Take their shared secret, decrypt the payload
-        const sharedSecret = user.shared_secret
-        const uInPayload = JSON.parse(inPayload); // Remove this, uncomment below
-        // const uInPayload = JSON.parse(AES.decrypt(inPayload, process.env.DIFFIE_IV, sharedSecret))
-
         // Stop if uuid in payload does not match sender
-        if (uuid != uInPayload.uuid) {
+        if (uuid != inPayload.uuid) {
             console.log(`UUID mismatch in payload.`);
             res.status(401).send({});
         }
         
-        // Pick b, generate g^ab mod p AND g^b mod p
-        const g = "05" // TODO change later
-        const p = "17" // is 23 in decimal
-        const gaModP = uInPayload.keyhalf;
+        const g = 5
+        const p = 23
 
-        const serverDiffie = crypto.createDiffieHellman(p, "hex", g, "hex");
-        const gbModP = serverDiffie.generateKeys("hex");
+        const b = crypto.randomInt(g, p-2);
 
-        // Save the session key;
-        const sessionKey = serverDiffie.computeSecret(Buffer.from(gaModP, "hex"));
-        user.session_key = sessionKey.toString("hex");
+        const gaModP = Number(inPayload.keyhalf);
+        const gbModP = (BigInt(g) ** BigInt(b)) % BigInt(p);
 
+        const sessionKey = (BigInt(gaModP) ** BigInt(b)) % BigInt(p);
+        user.session_key = ("0".repeat(24) + sessionKey.toString(16)).slice(-24);
+		
+		console.log(user.session_key);
+        
         // Create and encrypt payload containing g^b mod p and R_A
         const uOutPayload = JSON.stringify({
             "nonce": rA,
-            "keyhalf": gbModP.toString("hex")
+            "keyhalf": gbModP.toString(16)
         });
-        
-        const outPayload = uOutPayload; // Remove this, uncomment below
-        // const outPayload = AES.encrypt(uOutPayload, process.env.DIFFIE_IV, sharedSecret);
+
+        const sharedSecret = user.shared_secret
+        const outPayload = AES.encryptJsonString(uOutPayload, sharedSecret);
+		
+		console.log("TEST " + outPayload);
 
         // Add expected R_B to user obj
         const rB = crypto.randomInt(1, 10000);
@@ -340,7 +350,7 @@ module.exports = {
     },
     finishGetSessionKey: async (req, res) => {
         const uuid = req.body.uuid;
-        const inPayload = req.body.payload;
+        const inPayload = res.locals.message;
         
         // Find the user using their UUID
         const user = await UserHelper.findUserWithUuid(uuid);
@@ -352,18 +362,15 @@ module.exports = {
             return;
         }
 
-        // Decrypt response
-        const uInPayload = JSON.parse(inPayload); // Todo do decryption
-
         // Stop if uuid in payload does not match sender
-        if (uuid != uInPayload.uuid) {
+        if (uuid != inPayload.uuid) {
             console.log(`UUID mismatch in payload.`);
             res.status(401).send({});
             return;
         }
         
         // Check R_B
-        if (String(user.nonce_expected) != uInPayload.nonce) {
+        if (String(user.nonce_expected) != inPayload.nonce) {
             console.log(`Nonce mismatch!`);
             res.status(401).send({});
             return;
@@ -379,7 +386,6 @@ module.exports = {
     },
     isKeyExpired: async (req, res) => {
         const uuid = req.body.uuid;
-        const inPayload = req.body.payload;
         
         // Find the user using their UUID
         const user = await UserHelper.findUserWithUuid(uuid);
@@ -393,7 +399,7 @@ module.exports = {
         
         d = new Date();
         const lastEstablished = user.session_key_last_established;
-        const elapsed = d.getTime() - lastEstablished
+        const elapsed = d.getTime() - lastEstablished;
 
         if (!lastEstablished || elapsed > 900000) { // 15 mins
             res.status(200).send({ "is_expired": true });
