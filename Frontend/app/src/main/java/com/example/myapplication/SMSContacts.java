@@ -107,6 +107,28 @@ public class SMSContacts {
         }
     }
 
+    public static String getThreadIdbyPhoneNumber(Context c, String phoneNumber) {
+
+        ContentResolver cr = c.getContentResolver();
+        Cursor cur = cr.query(Uri.parse("content://sms"),
+                new String[]{"thread_id"}, "address=" + phoneNumber, null, Telephony.Sms.DEFAULT_SORT_ORDER);
+        String id = "";
+
+        if (cur == null) {
+            return id;
+        } else {
+            try {
+                if (cur.moveToFirst()) {
+                    id = cur.getString(cur.getColumnIndexOrThrow(Telephony.Sms.THREAD_ID));
+                }
+
+            } finally {
+                cur.close();
+            }
+            return id;
+        }
+    }
+
     public static int getContactIndexByThread(String thread) {
         for (int i = 0; i < contactList.size(); i++) {
             final ContactDataModel c = contactList.get(i);
@@ -117,10 +139,10 @@ public class SMSContacts {
         return -1;
     }
 
-    public static int getContactIndexByNumber(String thread) {
+    public static int getContactIndexByNumber(String number) {
         for (int i = 0; i < contactList.size(); i++) {
             final ContactDataModel c = contactList.get(i);
-            if (c.getThreadId().equals(thread)) {
+            if (c.getNumber().equals(number)) {
                 return i;
             }
         }

@@ -2,6 +2,8 @@ package com.example.myapplication;
 
 
 import android.content.ContentResolver;
+import android.content.Context;
+import android.content.SharedPreferences;
 import android.database.Cursor;
 import android.net.Uri;
 import android.os.Bundle;
@@ -35,6 +37,10 @@ public class ChatActivity extends AppCompatActivity {
     private List<SMSMessage> messageList;
     private EditText textInput;
     private Button sendButton;
+
+    public static final String cacheTrustedKey = "trustedList";
+    public static final String cacheRegularKey = "regularList";
+    public static final String cacheSpamKey = "spamList";
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -195,6 +201,22 @@ public class ChatActivity extends AppCompatActivity {
             priority = 1;
             SMSContacts.contactList.set(idx, c);
             SMSContacts.markAsTrusted(c.getNumber(), getApplicationContext());
+
+            SharedPreferences preferences = getApplicationContext().getSharedPreferences("SharedPreferences", Context.MODE_PRIVATE);
+
+            Set<String> trustedList = preferences.getStringSet(cacheTrustedKey, new HashSet<>());
+            Set<String> spamList = preferences.getStringSet(cacheSpamKey, new HashSet<>());
+            Set<String> regularList = preferences.getStringSet(cacheRegularKey, new HashSet<>());
+            trustedList.add(c.getNumber());
+            spamList.remove(c.getNumber());
+            regularList.remove(c.getNumber());
+            preferences.edit().remove(cacheTrustedKey).apply();
+            preferences.edit().remove(cacheRegularKey).apply();
+            preferences.edit().remove(cacheSpamKey).apply();
+            preferences.edit().putStringSet(cacheTrustedKey, trustedList).apply();
+            preferences.edit().putStringSet(cacheRegularKey, regularList).apply();
+            preferences.edit().putStringSet(cacheSpamKey, spamList).apply();
+
             onBackPressed();
             return true;
         } else if (id == R.id.mark_spam_action) {
@@ -204,6 +226,22 @@ public class ChatActivity extends AppCompatActivity {
             priority = -1;
             SMSContacts.contactList.set(idx, c);
             SMSContacts.markAsSpam(c.getNumber(), getApplicationContext());
+
+            SharedPreferences preferences = getApplicationContext().getSharedPreferences("SharedPreferences", Context.MODE_PRIVATE);
+
+            Set<String> trustedList = preferences.getStringSet(cacheTrustedKey, new HashSet<>());
+            Set<String> spamList = preferences.getStringSet(cacheSpamKey, new HashSet<>());
+            Set<String> regularList = preferences.getStringSet(cacheRegularKey, new HashSet<>());
+            trustedList.remove(c.getNumber());
+            spamList.add(c.getNumber());
+            regularList.remove(c.getNumber());
+            preferences.edit().remove(cacheTrustedKey).apply();
+            preferences.edit().remove(cacheRegularKey).apply();
+            preferences.edit().remove(cacheSpamKey).apply();
+            preferences.edit().putStringSet(cacheTrustedKey, trustedList).apply();
+            preferences.edit().putStringSet(cacheRegularKey, regularList).apply();
+            preferences.edit().putStringSet(cacheSpamKey, spamList).apply();
+
             onBackPressed();
             return true;
         }

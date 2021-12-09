@@ -35,7 +35,37 @@ public class SplashActivity extends Activity {
         setContentView(R.layout.activity_splash);
         QueueSingleton.getInstance(getApplicationContext());
 
+        checkPermissions();
 
+        SharedPreferences pref = getApplicationContext().getSharedPreferences("SharedPreferences", Context.MODE_PRIVATE);
+        Intent registrationIntent = new Intent(SplashActivity.this, RegistrationActivity.class);
+
+        if (SMSContacts.isInternetAvailable(getApplicationContext())) {
+            if (pref.getString("UUID", "").isEmpty() || pref.getString("SECRET", "").isEmpty()) {
+                startActivity(registrationIntent);
+            } else {
+                //TODO: call backend enpoint and use existing session key
+                            /*
+                            if (sk exists in cache):
+                                f() which calls Thomas's endpoint to check if
+                                can continue
+                             else:
+                                generateSessionKey(); // update session key in cache
+                             */
+                SMSContacts.generateSessionKey(pref, SplashActivity.this);
+                //                finish();
+            }
+        } else {
+            if (pref.getString("UUID", "").isEmpty() || pref.getString("SECRET", "").isEmpty()) {
+                startActivity(registrationIntent);
+            } else {
+                Intent mainIntent = new Intent(SplashActivity.this, MainActivity.class);
+                startActivity(mainIntent);
+                finish();
+            }
+        }
+
+        finish();
     }
 
     @Override
@@ -48,43 +78,13 @@ public class SplashActivity extends Activity {
         */
 
         try {
-            new Handler().postDelayed(new Runnable() {
+            new Handler().post(new Runnable() {
                 @Override
                 public void run() {
-                    checkPermissions();
 
-                    SharedPreferences pref = getApplicationContext().getSharedPreferences("SharedPreferences", Context.MODE_PRIVATE);
-                    Intent registrationIntent = new Intent(SplashActivity.this, RegistrationActivity.class);
-
-                    if (SMSContacts.isInternetAvailable(getApplicationContext())) {
-                        if (pref.getString("UUID", "").isEmpty() || pref.getString("SECRET", "").isEmpty()) {
-                            startActivity(registrationIntent);
-                        } else {
-                            //TODO: call backend enpoint and use existing session key
-                            /*
-                            if (sk exists in cache):
-                                f() which calls Thomas's endpoint to check if
-                                can continue
-                             else:
-                                generateSessionKey(); // update session key in cache
-                             */
-                            SMSContacts.generateSessionKey(pref, SplashActivity.this);
-                            //                finish();
-                        }
-                    } else {
-                        if (pref.getString("UUID", "").isEmpty() || pref.getString("SECRET", "").isEmpty()) {
-                            startActivity(registrationIntent);
-                        } else {
-                            Intent mainIntent = new Intent(SplashActivity.this, MainActivity.class);
-                            startActivity(mainIntent);
-                            finish();
-                        }
-                    }
-
-                    finish();
 
                 }
-            }, 2000);
+            });
 
         } catch (Exception e) {
             e.printStackTrace();

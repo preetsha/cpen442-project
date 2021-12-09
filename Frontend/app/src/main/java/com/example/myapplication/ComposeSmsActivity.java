@@ -1,6 +1,7 @@
 package com.example.myapplication;
 
-import android.content.Intent;
+import android.content.Context;
+import android.content.SharedPreferences;
 import android.os.Bundle;
 import android.telephony.SmsManager;
 import android.text.Editable;
@@ -14,6 +15,9 @@ import androidx.appcompat.widget.Toolbar;
 
 import com.example.myapplication.databinding.ActivityComposeSmsBinding;
 import com.google.android.material.textfield.TextInputLayout;
+
+import java.util.HashSet;
+import java.util.Set;
 
 public class ComposeSmsActivity extends AppCompatActivity {
     private ActivityComposeSmsBinding binding;
@@ -63,12 +67,31 @@ public class ComposeSmsActivity extends AppCompatActivity {
         binding.buttonGchatSend.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
-                if (!textInput.getText().toString().isEmpty()
+
+                String msgBody = textInput.getText().toString();
+                if (SMSContacts.getContactIndexByNumber(phoneNumber) == -1) {
+                    Toast.makeText(getApplicationContext(), "Contact already exists.", Toast.LENGTH_SHORT).show();
+                    return;
+                }
+
+                if (!msgBody.isEmpty()
                         && phoneNumber.length() == PHONE_NUMBER_LENGTH
                         && isValidPhoneNumber(phoneNumber)) {
                     sendMessage();
-                    Intent mainIntent = new Intent(ComposeSmsActivity.this, MainActivity.class);
-                    startActivity(mainIntent);
+                    String id = SMSContacts.getThreadIdbyPhoneNumber(getApplicationContext(), phoneNumber);
+                    ContactDataModel c = new ContactDataModel(phoneNumber, id, msgBody, System.currentTimeMillis());
+                    c.setPriority(ContactDataModel.Level.PRIORITY);
+                    SMSContacts.contactList.add(c);
+
+                    SharedPreferences preferences = getApplicationContext().getSharedPreferences("SharedPreferences", Context.MODE_PRIVATE);
+
+                    final String cacheTrustedKey = "trustedList";
+                    Set<String> list = preferences.getStringSet(cacheTrustedKey, new HashSet<>());
+                    list.add(phoneNumber);
+                    preferences.edit().remove(cacheTrustedKey).apply();
+                    preferences.edit().putStringSet(cacheTrustedKey, list).apply();
+
+                    onBackPressed();
                 }
             }
         });
