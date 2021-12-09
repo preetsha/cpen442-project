@@ -198,12 +198,12 @@ module.exports = {
 
         let trustScore = 0;
         const biTrustedUserNumbers = await getBidirectionalTrusts(thisUser, cachedUsers);
+		// Adjust trust score based on how many NEW users this number has contacted in the last hour
+        const networkActivity = Math.floor(otherUser.detected_recent_messages / 20);
         for (const trustedNumber of biTrustedUserNumbers) {
             trustScore += await calculateTrustScore(trustedNumber, encryptedOtherPersonPhone, 3, cachedUsers, networkActivity, thisUserPhone)
         }
 
-        // Adjust trust score based on how many NEW users this number has contacted in the last hour
-        const networkActivity = Math.floor(otherUser.detected_recent_messages / 20);
         trustScore -= networkActivity;
         
         const response = { "score": trustScore }
