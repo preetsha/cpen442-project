@@ -1,14 +1,13 @@
 package com.example.myapplication;
 
-import androidx.appcompat.app.AppCompatActivity;
-import androidx.appcompat.widget.Toolbar;
-
 import android.content.Context;
 import android.content.SharedPreferences;
 import android.os.Bundle;
 import android.widget.CompoundButton;
 
-import com.example.myapplication.databinding.ActivityRegistrationBinding;
+import androidx.appcompat.app.AppCompatActivity;
+import androidx.appcompat.widget.Toolbar;
+
 import com.example.myapplication.databinding.ActivitySettingsBinding;
 
 public class SettingsActivity extends AppCompatActivity {
@@ -22,6 +21,10 @@ public class SettingsActivity extends AppCompatActivity {
 
         binding = ActivitySettingsBinding.inflate(getLayoutInflater());
         setContentView(binding.getRoot());
+
+        sharedPreferences = getSharedPreferences("SharedPreferences", Context.MODE_PRIVATE);
+
+        binding.switchRegularNotification.setChecked(sharedPreferences.getBoolean("REGULAR_INBOX_NOTIFICATIONS", true));
 
         Toolbar toolbar = findViewById(R.id.toolbar_settings);
         setSupportActionBar(toolbar);

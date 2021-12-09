@@ -56,10 +56,11 @@ public class SmsReceiver extends BroadcastReceiver {
 
                     Log.i("SmsReceiver", "senderNum: " + senderNum + "; message: " + message);
 
-                    //TODO: read settings here
+
                     //TODO: improve logic here
                     SharedPreferences preferences = context.getSharedPreferences("SharedPreferences", Context.MODE_PRIVATE);
                     String cachedValue = SMSContacts.getCachedValue(preferences, senderNum);
+                    boolean notifyRegular = preferences.getBoolean("REGULAR_INBOX_NOTIFICATIONS", true);
 
                     ContactDataModel.Level level;
                     if (SMSContacts.isInternetAvailable(context)) {
@@ -89,8 +90,9 @@ public class SmsReceiver extends BroadcastReceiver {
 
                     if (level == ContactDataModel.Level.SPAM) {
                         return;
+                    } else if (level == ContactDataModel.Level.REGULAR && !notifyRegular) {
+                        return;
                     }
-
 
                     // Create an explicit intent for an Activity in your app
                     Intent splashIntent = new Intent(context.getApplicationContext(), SplashActivity.class);

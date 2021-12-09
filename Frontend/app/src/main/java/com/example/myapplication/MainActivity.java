@@ -30,7 +30,6 @@ public class MainActivity extends AppCompatActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
 
-        //makeMyAppDefaultRequest(getPackageName());
         SMSContacts.populateSMSGroups(this.getApplicationContext());
 
         binding = ActivityMainBinding.inflate(getLayoutInflater());

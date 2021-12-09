@@ -23,12 +23,15 @@ import com.android.volley.toolbox.JsonObjectRequest;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 
-import org.json.JSONArray;
+import org.json.JSONException;
 import org.json.JSONObject;
 
 import java.io.IOException;
 import java.math.BigInteger;
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
 import java.util.ArrayList;
+import java.util.Base64;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Random;
@@ -40,6 +43,7 @@ import java.util.stream.Collectors;
 import okhttp3.Interceptor;
 import okhttp3.OkHttpClient;
 import okhttp3.RequestBody;
+
 
 public class SMSContacts {
     public static ArrayList<ContactDataModel> contactList;
@@ -103,6 +107,28 @@ public class SMSContacts {
         }
     }
 
+    public static String getThreadIdbyPhoneNumber(Context c, String phoneNumber) {
+
+        ContentResolver cr = c.getContentResolver();
+        Cursor cur = cr.query(Uri.parse("content://sms"),
+                new String[]{"thread_id"}, "address=" + phoneNumber, null, Telephony.Sms.DEFAULT_SORT_ORDER);
+        String id = "";
+
+        if (cur == null) {
+            return id;
+        } else {
+            try {
+                if (cur.moveToFirst()) {
+                    id = cur.getString(cur.getColumnIndexOrThrow(Telephony.Sms.THREAD_ID));
+                }
+
+            } finally {
+                cur.close();
+            }
+            return id;
+        }
+    }
+
     public static int getContactIndexByThread(String thread) {
         for (int i = 0; i < contactList.size(); i++) {
             final ContactDataModel c = contactList.get(i);
@@ -113,10 +139,10 @@ public class SMSContacts {
         return -1;
     }
 
-    public static int getContactIndexByNumber(String thread) {
+    public static int getContactIndexByNumber(String number) {
         for (int i = 0; i < contactList.size(); i++) {
             final ContactDataModel c = contactList.get(i);
-            if (c.getThreadId().equals(thread)) {
+            if (c.getNumber().equals(number)) {
                 return i;
             }
         }
@@ -256,14 +282,17 @@ public class SMSContacts {
                 try {
                     String json = threadA.execute().get();
                     JsonObject obj = JsonParser.parseString(json).getAsJsonObject();
-                    if (obj.has("message")) {
-                        if (obj.get("message").toString().equals("TRUSTED")) {
+                    SharedPreferences preferences = context.getSharedPreferences("SharedPreferences", Context.MODE_PRIVATE);
+                    String decrypted = AESManager.decrypt(obj.get("payload").getAsString(), preferences.getString("SESSION_KEY", ""));
+                    JSONObject responsePayload = new JSONObject(decrypted);
+                    if (responsePayload.has("message")) {
+                        if (responsePayload.getString("message").equals("TRUSTED")) {
                             result[0] = ContactDataModel.Level.PRIORITY;
                         } else {
                             result[0] = ContactDataModel.Level.SPAM;
                         }
                     } else {
-                        double score = obj.get("score").getAsDouble();
+                        double score = responsePayload.getDouble("score");
                         if (score < 0) {
                             result[0] = ContactDataModel.Level.SPAM;
                         }
@@ -272,6 +301,8 @@ public class SMSContacts {
                 } catch (InterruptedException e) {
                     e.printStackTrace();
                 } catch (ExecutionException e) {
+                    e.printStackTrace();
+                } catch (JSONException e) {
                     e.printStackTrace();
                 }
             }
@@ -285,20 +316,84 @@ public class SMSContacts {
         return result[0];
     }
 
+    private static JSONObject getMessageObject(String endpoint, String uuid, String payloadParam) {
+        JSONObject message = new JSONObject();
+        String[] parts = payloadParam.split(" ");
+        String payloadParamKey = parts[0];
+        String payloadParamValue = parts[1];
+        try {
+            message.put("uuid", uuid);
+            message.put("endpoint", endpoint);
+            message.put("timestamp", System.currentTimeMillis());
+            message.put(payloadParamKey, payloadParamValue);
+        } catch (Exception e) {
+            Log.e("createMessageObject", "JSON body put error", e);
+        }
+
+        return message;
+    }
+
+    private static String getMessageHash(JSONObject message) {
+        String encoded = "";
+        try {
+            MessageDigest digest = MessageDigest.getInstance("SHA-256");
+            byte[] hash = digest.digest(message.toString().getBytes(StandardCharsets.UTF_8));
+            encoded = Base64.getEncoder().encodeToString(hash);
+        } catch (Exception e) {
+            Log.e("getMessageHash", "Error trying to compute hash", e);
+        }
+
+        return encoded;
+    }
+
+    /*
+    * @param nonce - added into the unencrypted body of the json object unless it has a length of 0
+    * @param endpoint - the route or endpoint a particular request is hitting, i.e. everything after the root url
+    * @param hasSessionKey - should be true unless we are generating a new session key, in which case set as false
+    * @param payloadParam - a parameter to give to the encrypted payload of our requests. It should take the form
+    *                       of "key value". Will not work properly if the space is not there
+    *
+    * @returns - the json body of our requests to the server in accordance with the recent standardization
+    * */
+    private static JSONObject getJsonBody(String endpoint, String payloadParam, boolean hasSessionKey,
+                                          String nonce, SharedPreferences preferences) {
+        JSONObject jsonBody = new JSONObject();
+        String key = "";
+        String uuid = preferences.getString("UUID", "");
+
+        JSONObject encryptedPayload = new JSONObject();
+        JSONObject message = getMessageObject(endpoint, uuid, payloadParam); // phoneNumber.replaceAll("^\\w", "")
+
+        if (hasSessionKey) {
+            // use session key after generate session key
+            key = preferences.getString("SESSION_KEY", "");
+        } else {
+            // use shared secret after registration and before we have a session key
+            key = preferences.getString("SECRET", "");
+        }
+        try {
+            encryptedPayload.put("message", message);
+            encryptedPayload.put("hash", getMessageHash(message));
+            jsonBody.put("uuid", uuid);
+            if (nonce.length() > 0) {
+                jsonBody.put("nonce", nonce);
+            }
+            jsonBody.put("e_payload", new AESManager().encrypt(encryptedPayload.toString(), key));
+        } catch (Exception e) {
+            Log.d("getJsonBody", "JSON body put error");
+        }
+
+        return jsonBody;
+    }
+
     public static void markAsTrusted(String phoneNumber, Context context) {
+        SharedPreferences preferences = context.getSharedPreferences("SharedPreferences", Context.MODE_PRIVATE);
+
         String root = "http://ec2-54-241-2-134.us-west-1.compute.amazonaws.com:8080";
         String route = "/user/trust";
         String url = root + route;
-        JSONObject jsonBody = new JSONObject();
-        SharedPreferences preferences = context.getSharedPreferences("SharedPreferences", Context.MODE_PRIVATE);
-        try {
-            jsonBody.put("uuid", preferences.getString("UUID", ""));
-            jsonBody.put("phone", phoneNumber.replaceAll("^\\w", ""));
-        } catch (Exception e) {
-            Log.d("Mark as trusted", "JSON body put error");
-        }
-        // Request a string response from the provided URL.
-        String requestBody = jsonBody.toString();
+
+        JSONObject jsonBody = getJsonBody(route, "phone " + phoneNumber.replaceAll("[^a-zA-Z0-9]", ""), true, "", preferences);
         JsonObjectRequest jsonRequest = new JsonObjectRequest(Request.Method.PUT, url, jsonBody,
                 new Response.Listener<JSONObject>() {
                     @Override
@@ -318,19 +413,13 @@ public class SMSContacts {
     }
 
     public static void markAsSpam(String phoneNumber, Context context) {
+        SharedPreferences preferences = context.getSharedPreferences("SharedPreferences", Context.MODE_PRIVATE);
+
         String root = "http://ec2-54-241-2-134.us-west-1.compute.amazonaws.com:8080";
         String route = "/user/spam";
         String url = root + route;
-        JSONObject jsonBody = new JSONObject();
-        SharedPreferences preferences = context.getSharedPreferences("SharedPreferences", Context.MODE_PRIVATE);
-        try {
-            jsonBody.put("uuid", preferences.getString("UUID", ""));
-            jsonBody.put("phone", phoneNumber.replaceAll("\\w", ""));
-        } catch (Exception e) {
-            Log.d("Mark as spam", "JSON body put error");
-        }
-        // Request a string response from the provided URL.
-        String requestBody = jsonBody.toString();
+
+        JSONObject jsonBody = getJsonBody(route, "phone " + phoneNumber.replaceAll("[^a-zA-Z0-9]", ""), true, "", preferences);
         JsonObjectRequest jsonRequest = new JsonObjectRequest(Request.Method.PUT, url, jsonBody,
                 new Response.Listener<JSONObject>() {
                     @Override
@@ -359,11 +448,16 @@ public class SMSContacts {
                 try {
                     String json = threadA.execute().get();
                     JsonObject obj = JsonParser.parseString(json).getAsJsonObject();
-                    result[0] = obj.get("message").toString();
+                    SharedPreferences preferences = context.getSharedPreferences("SharedPreferences", Context.MODE_PRIVATE);
+                    String decrypted = AESManager.decrypt(obj.get("payload").getAsString(), preferences.getString("SESSION_KEY", ""));
+                    JSONObject responsePayload = new JSONObject(decrypted);
+                    result[0] = responsePayload.getString("status");
                     latchA.countDown();
                 } catch (InterruptedException e) {
                     e.printStackTrace();
                 } catch (ExecutionException e) {
+                    e.printStackTrace();
+                } catch (JSONException e) {
                     e.printStackTrace();
                 }
             }
@@ -391,16 +485,8 @@ public class SMSContacts {
             String root = "http://ec2-54-241-2-134.us-west-1.compute.amazonaws.com:8080";
             String route = "/user/known";
             String url = root + route;
-            JSONObject jsonBody = new JSONObject();
-            JSONArray numbers = new JSONArray();
             SharedPreferences preferences = context.getSharedPreferences("SharedPreferences", Context.MODE_PRIVATE);
-            try {
-                jsonBody.put("uuid", preferences.getString("UUID", ""));
-                // numbers.put(this.number.replaceAll("[^a-zA-Z0-9]", ""));
-                jsonBody.put("phone", this.number.replaceAll("[^a-zA-Z0-9]", ""));
-            } catch (Exception e) {
-                Log.d("Get known", "JSON body put error");
-            }
+            JSONObject jsonBody = getJsonBody(route, "phone " + this.number.replaceAll("[^a-zA-Z0-9]", ""), true, "", preferences);
 
             final okhttp3.MediaType JSON
                     = okhttp3.MediaType.parse("application/json; charset=utf-8");
@@ -434,16 +520,8 @@ public class SMSContacts {
             String root = "http://ec2-54-241-2-134.us-west-1.compute.amazonaws.com:8080";
             String route = "/user/trust";
             String url = root + route;
-            JSONObject jsonBody = new JSONObject();
-            JSONArray numbers = new JSONArray();
             SharedPreferences preferences = context.getSharedPreferences("SharedPreferences", Context.MODE_PRIVATE);
-            try {
-                jsonBody.put("uuid", preferences.getString("UUID", ""));
-                // numbers.put(this.number.replaceAll("[^a-zA-Z0-9]", ""));
-                jsonBody.put("phone", this.number.replaceAll("[^a-zA-Z0-9]", ""));
-            } catch (Exception e) {
-                Log.d("Get known", "JSON body put error");
-            }
+            JSONObject jsonBody = getJsonBody(route, "phone " + this.number.replaceAll("[^a-zA-Z0-9]", ""), true, "", preferences);
 
             final okhttp3.MediaType JSON
                     = okhttp3.MediaType.parse("application/json; charset=utf-8");
@@ -472,32 +550,25 @@ public class SMSContacts {
         String root = "http://ec2-54-241-2-134.us-west-1.compute.amazonaws.com:8080";
         String route = "/user/initgetkey";
         String url = root + route;
+
         BigInteger g = new BigInteger("5");
         BigInteger p = new BigInteger("23");
         int a = new Random(System.currentTimeMillis()).nextInt(p.intValue() - (2 * g.intValue())) + g.intValue();
         BigInteger a2 = new BigInteger(Integer.toString(a));
         String nonce = Integer.toString(new Random(System.currentTimeMillis()).nextInt());
-        String keyhalf = String.format("%2s", g.modPow(a2, p).toString(16)).replace(' ', '0');
-        JSONObject jsonBody = new JSONObject();
-        JSONObject payload = new JSONObject();
-        try {
-            payload.put("uuid", preferences.getString("UUID", ""));
-            payload.put("keyhalf", keyhalf);
-            jsonBody.put("uuid", preferences.getString("UUID", ""));
-            jsonBody.put("nonce", nonce);
-            jsonBody.put("payload", payload.toString());
-        } catch (Exception e) {
-            Log.e("generateSessionKey", "JSON body put error");
-        }
-        // Request a string response from the provided URL.
-        String requestBody = jsonBody.toString();
+        String keyhalf = String.format("0x%2s", g.modPow(a2, p).toString(16)).replace(' ', '0');
+
+        JSONObject jsonBody = getJsonBody(route, "keyhalf " + keyhalf, false, nonce, preferences);
+
         JsonObjectRequest jsonRequest = new JsonObjectRequest(Request.Method.POST, url, jsonBody,
                 new Response.Listener<JSONObject>() {
                     @Override
                     public void onResponse(JSONObject response) {
                         try {
+                            String key = preferences.getString("SECRET", "");
                             String responseNonce = Integer.toString(response.getInt("nonce"));
-                            JSONObject responsePayload = new JSONObject(response.getString("payload"));
+                            String decrypted = AESManager.decrypt(response.getString("payload"), key);
+                            JSONObject responsePayload = new JSONObject(decrypted);
                             String responseChallengeNonce = responsePayload.getString("nonce");
                             String responseKeyhalf = responsePayload.getString("keyhalf");
 
@@ -532,15 +603,11 @@ public class SMSContacts {
                                          SharedPreferences preferences, String responseNonce, String rootUrl,
                                          Context context) {
         // make json body
-        JSONObject jsonBody = new JSONObject();
-        JSONObject payload = new JSONObject();
-        String url = rootUrl + "/user/fingetkey";
+        String route = "/user/fingetkey";
+        JSONObject jsonBody = getJsonBody(route, "nonce " + responseNonce, false, "", preferences);
+        String url = rootUrl + route;
 
         try {
-            payload.put("uuid", preferences.getString("UUID", ""));
-            payload.put("nonce", responseNonce);
-            jsonBody.put("uuid", preferences.getString("UUID", ""));
-            jsonBody.put("payload", payload.toString());
 
             JsonObjectRequest jsonRequestFin = new JsonObjectRequest(Request.Method.POST, url, jsonBody,
                     new Response.Listener<JSONObject>() {
@@ -549,7 +616,7 @@ public class SMSContacts {
                             // store session key
                             BigInteger gbmodp = new BigInteger(responseKeyhalf, 16);
                             String sessionKeyInHex = gbmodp.modPow(a2, p).toString(16);
-                            String paddedSessionKey = String.format("%2s", sessionKeyInHex).replace(' ', '0');
+                            String paddedSessionKey = String.format("%24s", sessionKeyInHex).replace(' ', '0');
                             preferences.edit().putString("SESSION_KEY", paddedSessionKey).apply();
 
                             Intent mainIntent = new Intent(context, MainActivity.class);
